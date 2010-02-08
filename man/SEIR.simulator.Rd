@@ -1,30 +1,35 @@
 
 \name{SEIR.simulator}
-\alias{SEIR.simulator}
-\title{Simulate an epidemic on a contact network}
-\description{Simulate the spread of an epidemic across an
-(undirected) contact network.}
 
-\usage{ SEIR.simulator(M, N, beta, ki, thetai, ke=ki, thetae=thetai,
-	latencydist="fixed", latencyperiod=0) }
+\alias{SEIR.simulator}
+
+\title{Simulate an epidemic on a contact network}
+
+\description{Simulate the spread of an epidemic across an
+    (undirected) contact network.}
+
+\usage{SEIR.simulator(M, N, beta, ki, thetai, ke = ki, thetae = thetai, 
+    latencydist = "fixed", latencyperiod = 0) }
 
 \arguments{
-  \item{M}{an undirected network, given in edgelist matrix
-  format}
+  \item{M}{an undirected network, given in edgelist matrix 
+      format}
   \item{N}{the number of nodes in the contact network.}
   \item{beta}{the transmission rate of the virus across an edge
-  of the network.}
+      of the network.}
   \item{ki}{the shape parameter for the removal process for
-  the epidemic.}
+      the epidemic.}
   \item{thetai}{the scale parameter for the removal process
-  for the epidemic.}
+      for the epidemic.}
   \item{ke}{the shape parameter for the removal process for
-  the epidemic.}
+      the epidemic.}
   \item{thetae}{the scale parameter for the removal process
-  for the epidemic.}
-  \item{latencydist}{type of latency period; can be "fixed" or "gamma".}
-  \item{latencyperiod}{length of latency period, if using latencydist == "fixed".
-  Ignored if latencydist == "gamma".  Set to 0 to get an SIR epidemic.}
+      for the epidemic.}
+  \item{latencydist}{type of latency period; can be \dQuote{fixed} 
+      or \dQuote{gamma}.}
+  \item{latencyperiod}{length of latency period, if using latencydist 
+      == \dQuote{fixed}.  Ignored if latencydist == \dQuote{gamma}.  
+      Set to 0 to get an SIR epidemic.}
 }
 
 \details{Takes as input an undirected network, given in
@@ -42,7 +47,7 @@ a gamma RV with parameters ki and thetai (mean = \eqn{ki \cdot thetai}{ki * thet
 var = \eqn{ki \cdot thetai^2}{ki * thetai^2}).  Once an individual is removed, they cannot be 
 re-infected and cannot infect others.}
 
-\value{ matrix consisting of one row for each
+\value{matrix consisting of one row for each
   infection. Each row contains (in columns 1 - 5, respectively):
   the node infected, the infecting node, the time of infection,
   the time of transition from exposed to infective, and the 
@@ -50,14 +55,22 @@ re-infected and cannot infect others.}
   occurs at time 0.
 }
 
+\seealso{\code{\link{buildER}} for simulating an Erdos-Renyi
+    contact network, \code{\link{epibayesmcmc}} for performing
+    inference on the network and epidemic model parameters,
+    and \code{\link{PlotEpiTree}} for plotting functions.
+}
+
+
 \author{Chris Groendyke \email{cxg928@psu.edu},
   David Welch \email{jdw21@stat.psu.edu}, 
-	}
+}
 
 \examples{# Simulate an epidemic through a network of 30
 set.seed(1)
-examplenet <- buildER(30,0.1)
-exampleepidemic <- SEIR.simulator(examplenet,30,0.3,2,5,latencydist="gamma")
+examplenet <- buildER(30, 0.1)
+exampleepidemic <- SEIR.simulator(examplenet, 30, 0.3, 2, 5, 
+    latencydist = "gamma")
 }
 
 \keyword{graphs}
