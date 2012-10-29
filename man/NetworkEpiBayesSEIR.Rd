@@ -1,22 +1,26 @@
 
 \name{epibayesmcmc}
+
 \Rdversion{2.10}
+
 \alias{epibayesmcmc}
+
 \title{Uses epidemic data to perform Bayesian inference on a contact network}
+
 \description{Performs Bayesian inference on parameters
 for an SEIR epidemic model and a Bernoulli random graph
 model, given recovery (and perhaps also exposure/infective) times
 for each individual infected during the course of an epidemic.}
 
 \usage{epibayesmcmc(inf.list, nsamp, thinning, bprior, tiprior, teprior, 
-	pprior = c(5,N), kiprior, keprior, N, priordists="gamma",  
-	betapriordist=priordists, thetaipriordist=priordists, 
-	thetaepriordist=priordists, kipriordist = priordists, 
-	kepriordist=priordists, extrathinning=FALSE,
-	inferEtimes = FALSE, inferItimes = FALSE, parentprobmult = 1)}
+    pprior = c(5,N), kiprior, keprior, N, priordists="gamma", 
+    betapriordist=priordists, thetaipriordist=priordists, 
+    thetaepriordist=priordists, kipriordist = priordists, 
+    kepriordist=priordists, extrathinning=FALSE, 
+    inferEtimes = FALSE, inferItimes = FALSE, parentprobmult = 1)}
 
 \arguments{
-  \item{inf.list}{input data consisting of exposure, infection, and recovery times, such as produced by \code{\link{SEIR.simulator}}}
+  \item{inf.list}{input data consisting of exposure, infection, and recovery times, such as produced by \code{\link{SEIR.simulator}}.}
   \item{nsamp}{number of iterations to run MCMC algorithm.}
   \item{thinning}{thinning interval.}
   \item{bprior}{list of parameters for beta prior.}
@@ -26,12 +30,12 @@ for each individual infected during the course of an epidemic.}
   \item{kiprior}{list of parameters for ki prior.}
   \item{keprior}{list of parameters for ke prior.}
   \item{N}{number of people in the population.  Assumed to be fixed and known.}
-  \item{priordists}{can be ``uniform'' or ``gamma''.}
-  \item{betapriordist}{can be ``uniform'' or ``gamma''.}
-  \item{thetaipriordist}{can be ``uniform'' or ``gamma''.}
-  \item{thetaepriordist}{can be ``uniform'' or ``gamma''.}
-  \item{kipriordist}{can be ``uniform'' or ``gamma''.}
-  \item{kepriordist}{can be ``uniform'' or ``gamma''.}
+  \item{priordists}{can be \dQuote{uniform} or \dQuote{gamma}.}
+  \item{betapriordist}{can be \dQuote{uniform} or \dQuote{gamma}.}
+  \item{thetaipriordist}{can be \dQuote{uniform} or \dQuote{gamma}.}
+  \item{thetaepriordist}{can be \dQuote{uniform} or \dQuote{gamma}.}
+  \item{kipriordist}{can be \dQuote{uniform} or \dQuote{gamma}.}
+  \item{kepriordist}{can be \dQuote{uniform} or \dQuote{gamma}.}
   \item{extrathinning}{set to FALSE unless we want to return inferred values of the
   	exposure / infective times and the transmission tree, in which case it is an integer
   	specifying the extra thinning interval.}
@@ -87,14 +91,14 @@ of the other parameters every 10 iterations.  If these inferred values are not d
 The default prior distribution for the parent of each node is uniform on all of the other nodes.  To specify a
 non-uniform distribution, use column 2 of inf.list and set parentpriormult to an integer multiplier greater than 1.
 
-Uses an algorithm similar to that described in Britton and O'Neill (2002).
+Uses an algorithm similar to that described in Groendyke et al. (2010) and Britton and O'Neill (2002).
 }
 
 \value{	
   \item{accept}{vector containing the number of times a proposed new value was accepted for the parameters 
-  (P,p,G,beta,thetai,ki,thetae,ke).}
-  \item{propose}{vector containing the number of times a new value was proposed for the parameters
-  (P,p,G,beta,thetai,ki,thetae,ke).}
+      (P, p, G, beta, thetai, ki, thetae, ke).}
+  \item{propose}{vector containing the number of times a new value was proposed for the parameters 
+      (P, p, G, beta, thetai, ki, thetae, ke).}
   \item{beta}{vector containing the sample for parameter beta.}
   \item{thetai}{vector containing the sample for parameter thetai.}
   \item{thetae}{vector containing the sample for parameter thetae.}
@@ -106,33 +110,39 @@ Uses an algorithm similar to that described in Britton and O'Neill (2002).
   \item{initexptime}{vector containing the sample for parameter \eqn{E_{\kappa}}{E_kappa} (initial exposure time).
   	Will only vary when the exposure times are assumed unknown.}
   \item{exptimes}{if inferEtimes is TRUE, this is two-dimensional array containing the inferred exposure times
-  	(exptimes[i,] contains the sample of exposure times for node i). If inferEtimes is FALSE, this will be NULL.  }
+  	(exptimes[i, ] contains the sample of exposure times for node i). If inferEtimes is FALSE, this will be NULL.  }
   \item{inftimes}{if inferItimes is TRUE, this is two-dimensional array containing the inferred infective times
-  	(inftimes[i,] contains the sample of infective times for node i). If inferItimes is FALSE, this will be NULL.  }
+  	(inftimes[i, ] contains the sample of infective times for node i). If inferItimes is FALSE, this will be NULL.  }
   \item{rectimes}{vector containing the original recovery times.}
-  \item{transtree}{A two-dimensional array containing the sample for inferred transmission tree.  transtree[i,] contains the sample
+  \item{transtree}{A two-dimensional array containing the sample for inferred transmission tree.  transtree[i, ] contains the sample
   	of parent nodes for node i.  A parent node of -999 for i designates that i is the initial exposed node.}
 }
 
+\seealso{\code{\link{SEIR.simulator}} for simulating an SEIR epidemic over an Erdos-Renyi network, \code{\link{Hagelloch}} 
+    for an example epidemic data set, and \code{\link{PlotEpiTree}} for plotting the epidemic.} 
+
 \references{
+Groendyke, C., Welch, D. and Hunter, D. (2010) Bayesian inference for contact networks given
+    epidemic data, Technical Report, Department of Statistics, Pennsylvania State University, \bold{10-02}
+    \url{http://www.stat.psu.edu/reports/2010/TR10-02.pdf}
+	
 Britton, T. and O'Neill, P.D. 2002. Bayesian inference for stochastic epidemics in populations 
-	with random social structure, \emph{Scandinavian Journal of Statistics}, \bold{29-3}
+    with random social structure, \emph{Scandinavian Journal of Statistics}, \bold{29-3}
 }
 
-\author{ Chris Groendyke \email{cxg928@psu.edu},
-	David Welch \email{jdw21@stat.psu.edu} }
+\author{ Chris Groendyke \email{cxg928@psu.edu}, 
+    David Welch \email{jdw21@stat.psu.edu} }
 
 \examples{# Simulate an epidemic through a network of 30
 set.seed(1)
-examplenet <- buildER(N=30, p=0.1)
-exampleepidemic <- SEIR.simulator(examplenet, N=30,
-	beta=0.3, ki=2, thetai=5, latencydist="gamma")
-# Plot the simulated epidemic
-plotepi(exampleepidemic)
+examplenet <- buildER(N = 30, p = 0.1)
+exampleepidemic <- SEIR.simulator(examplenet, N = 30, 
+    beta = 0.3, ki = 2, thetai = 5, latencydist = "gamma")
+
 # Run MCMC algorithm on this epidemic
-examplemcmc <- epibayesmcmc(exampleepidemic, nsamp=100000,
-	thinning=100, bprior=c(0,1), tiprior=c(0,5), teprior=c(0,5), kiprior=c(0,10),
-	keprior=c(0,10), N=30, priordists="uniform")
+examplemcmc <- epibayesmcmc(exampleepidemic, nsamp = 100000, 
+    thinning = 100, bprior = c(0, 1), tiprior = c(0, 5), teprior = c(0, 5), 
+    kiprior = c(0, 10), keprior = c(0, 10), N = 30, priordists = "uniform")
 }
 
 \keyword{graphs}
