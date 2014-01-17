@@ -6,7 +6,6 @@
 #
 ######################################################################
 
-.First.lib <- function(lib, pkg){
-   library.dynam("epinet", pkg, lib)
-    cat("Welcome to epinet. Type help(package=\"epinet\") for help.\n")
+.onAttach <- function(lib, pkg){
+    packageStartupMessage("Welcome to epinet. Type help(package=\"epinet\") for help.\n")
 }
