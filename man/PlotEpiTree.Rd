@@ -1,11 +1,8 @@
 
+
 \name{PlotEpiTree}
-
-\alias{PlotEpiTree}
-
-\alias{plotepitreemcmc}
-
 \alias{plotepitree}
+\alias{plotepitreemcmc}
 
 \title{Plot the spread of an epidemic}
 
@@ -13,7 +10,7 @@
 
 \usage{plotepitree(epi, lwd = 1, leaf.labs = TRUE, leaf.cex = 0.75, 
     zero.at.start = FALSE, main = "Spread of Epidemic", xlab = "Time", 
-    ylab= "",e.col = "black", i.col = "red", lty.transmission = 3, 
+    ylab= "", e.col = "black", i.col = "red", lty.transmission = 3, 
     marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...)
 
 plotepitreemcmc(mcmcoutput, index = lastiteration, lwd = 1, 
@@ -70,7 +67,12 @@ plotepitreemcmc(mcmcoutput, index = lastiteration, lwd = 1,
     transmission tree) and the times that each node entered 
     the Exposed, Infective, and Removed states.  The default 
     plotting parameter values work well for epidemics up to
-    about 50 - 60 infecteds.}
+    about 50 - 60 infecteds and requires at least 2 infecteds.
+    
+    Only works for full data, i.e., the transmission tree must 
+    be fully specified and all times for infected individuals
+    must be known.  Remove any records containing missing 
+    information prior to calling this function.}
 
 \value{ returns no value.  Strictly invoked for the plotting
 	side effect.
@@ -81,23 +83,30 @@ plotepitreemcmc(mcmcoutput, index = lastiteration, lwd = 1,
     inference on the network and epidemic model parameters.
 }
 
-\author{David Welch <jdw21@stat.psu.edu>, 
-    Chris Groendyke \email{cxg928@psu.edu}}
+\author{David Welch \email{david.welch@auckland.ac.nz}, 
+    Chris Groendyke \email{cgroendyke@gmail.com}}
 
 \examples{# Simulate an epidemic through a network of 30
-set.seed(1)
-examplenet <- buildER(30, 0.1)
-exampleepidemic <- SEIR.simulator(examplenet, 30, 0.3, 2, 5, 
-    latencydist="gamma")
+set.seed(3)
+N <- 30
+# Build dyadic covariate matrix
+# Have a single covariate for overall edge density; this is the Erdos-Renyi model
+nodecov <- matrix(1:N,nrow = N)
+dcm <- BuildDyadicCovMatrix(nodecov)
+# Build network and simulate epidemic over network
+examplenet <- BuildDyadicLinearERGM(N, dyadiccovmat=dcm, eta=-1.8)
+exampleepidemic <- SEIR.simulator(examplenet, N = 30, 
+    beta = 0.3, ki = 2, thetai = 5, latencydist="gamma")
 
 # Plot the simulated epidemic
 plotepitree(exampleepidemic)
 
 # Run MCMC algorithm on this epidemic
-examplemcmc <- epibayesmcmc(exampleepidemic, nsamp = 100000, 
-    thinning = 1000, bprior = c(0, 1), tiprior = c(0, 5), teprior = c(0, 5),
-    kiprior = c(0, 10), keprior = c(0, 10), N = 30, priordists = "uniform", 
-    extrathinning = 10, inferEtimes = TRUE, inferItimes = TRUE)
+# Note: Not enough data or iterations to do inference
+examplemcmc <- epibayesmcmc(exampleepidemic, nsamp = 5000, 
+    thinning = 10, bprior = c(0, 1), tiprior = c(1, 3), teprior = c(1, 3), etaprior = c(0, 10),
+    kiprior = c(2, 8), keprior = c(2, 8), etapropsd = 0.2, priordists = "uniform", 
+    extrathinning = 10, inferEtimes = TRUE, inferItimes = TRUE, verbose = FALSE)
 
 # Plot starting state of epidemic from chain 
 plotepitreemcmc(examplemcmc, index = 1)

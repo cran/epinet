@@ -3,6 +3,7 @@
 \title{Internal epinet Objects}
 \alias{itimestartvalues}
 \alias{etimestartvalues}
+\alias{CreateCompactMatrix}
 \description{
   Internal epinet functions.
 }

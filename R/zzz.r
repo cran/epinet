@@ -7,5 +7,8 @@
 ######################################################################
 
 .onAttach <- function(lib, pkg){
-    packageStartupMessage("Welcome to epinet. Type help(package=\"epinet\") for help.\n")
+  info <- packageDescription("epinet")
+  packageStartupMessage(
+    paste('\nepinet: version ', info$Version, ', created on ', info$Date, '\n', sep="")
+    )
 }

@@ -1,2 +1,7 @@
-useDynLib("epinet")
-exportPattern( "^[[:alpha:]]+" )
+
+useDynLib(epinet)
+
+importFrom(utils, packageDescription)
+
+# Export all names that do not begin with a dot.
+exportPattern("^[^\\.]")

@@ -1,5 +1,6 @@
 /*
  *  File NetworkFunctions.h
+ *  Part of the `epinet' R package
  *
  *  Based on 'statnet' project software (http://statnetproject.org). 
  *  For license and citation information see http://statnetproject.org/attribution 
@@ -10,7 +11,7 @@
  *  also the associated functions to manipulate this structure.  This
  *  structure is a modified version of the Network structure from the
  *  ergm package (part of the 'statnet' project software), modified for
- *  this application.
+ *  the epinet package.
  */
 
 #ifndef NETWORKFUNCTIONS_H
@@ -45,10 +46,14 @@ typedef struct TreeNodestruct {
 
 
 /* Network is a structure containing all essential elements
-   of a given an I-I network; it is based on the Network data
+   of a given network; it is based on the Network data
    structure from the "ergm" package (see above), with 
    deletion of unnecessary things, and a few new fields 
-   that are specific to this application
+   that are specific to this application.  Unlike previous
+   versions, we are storing ALL individuals in the network,
+   rather than just the infecteds.  By convention, we assume
+   that the individuals labelled 1..m (i.e., 1..ninfnodes) are
+   infected, and the rest are susceptible (never infected)
 
    Some of the fields in a Network structure are:
    inedges and outedges are arrays of TreeNode that are used to 
@@ -58,21 +63,23 @@ typedef struct TreeNodestruct {
    outdegree[] and indegree[] are continually updated to give
      the appropriate degree values for each vertex.  These should
      point to Vertex-vectors of length ninfnodes.  
-   nsus is the number of susceptibles (nodes that are never infected
-     over the course of the epidemic) and equals the total population (N)
-     minus the number of infecteds (ninfnodes)     
+   ninfnodes is the number of infected individuals (also referred
+    to sometimes as "m")
+   N is the total number of members in the population (infecteds
+	+ susceptibles)
+   numgroups holds the number of dyadic groups; this is defined
+	by the data and should not change
+   numdyads holds the number of dyads in each dyadic group; this
+	is defined by the data and should not change
+   numedges keeps the number of edges (ties) in each dyadic group;
+	this is updated as the graph changes
  */
      
 typedef struct Networkstruct {
   TreeNode *inedges;
   TreeNode *outedges;
   Vertex ninfnodes;
-  Vertex nsus;
   Vertex N;
-  Edge niiedges;
-  Edge *nisedges;
-  Edge nssedges;
-  Edge totaledges;
   Edge next_inedge;
   Edge next_outedge;
   Vertex *indegree;
@@ -80,8 +87,9 @@ typedef struct Networkstruct {
   Edge maxedges;
 } Network;
 
+
 /* Initialization and destruction. */
-Network NetworkInitialize(Vertex *heads, Vertex *tails, Edge niiedges, Vertex ninfnodes, Vertex nsus, Vertex N);
+Network NetworkInitialize(Vertex *heads, Vertex *tails, Edge edgecount, Vertex ninfnodes, Vertex N);
 void NetworkDestroy(Network *nwp);
 
 /* Accessors. */
@@ -101,6 +109,6 @@ int DeleteHalfedgeFromTree(Vertex a, Vertex b, TreeNode *edges, Edge *next_edge)
 void printedge(Edge e, TreeNode *edges);
 void InOrderTreeWalk(TreeNode *edges, Edge x);
 void NetworkEdgeList(Network *nwp);
-void ShuffleEdges(Vertex *heads, Vertex *tails, Edge niiedges);
+void ShuffleEdges(Vertex *heads, Vertex *tails, Edge edgecount);
 
 #endif

@@ -2,7 +2,10 @@
 /*
  *  File NetworkEpiMCMCSEIR.c
  *
- *  
+ *  Part of the `epinet' R package.
+ *  This file contains the routines to perform
+ *  inference on the parameters in the network and
+ *  epidemic models.
  */
 
 
@@ -13,9 +16,9 @@
 #include <Rmath.h>
 #include <math.h> 
 #include <Rdefines.h>
+#include <time.h>
 #include "NetworkEpiMCMCSEIR.h"
-//#include "epinetdebugutils.h"
-
+#include "epinetdebugutils.h"
 
 
 /********************
@@ -27,13 +30,12 @@ the vertices that could possibly be its parents.  Called only at the beginning
 of the MCMC routine.  Also finds the initial exposed.
 *******************/
 
-int InitializeTransTree(Vertex *transtree, double *exptimes, double *inftimes, double *rectimes, int m, Vertex *initexp, double *A)
+int InitializeTransTree(Vertex *transtree, double *exptimes, double *inftimes, double *rectimes, int m, int N, Vertex *initexp, double *A)
 {
-
 	double maxrand, posspar, lowexptime = exptimes[1];
 	Vertex i, j, currpar, lowexp = 1, numinits = 0;
 
-	*A = 0;		
+	*A = 0;				/* A holds the infectious pressure for the epidemic */
 	transtree[0] = 0;				/* 0th element isn't used - just set equal to 0 */
 	for (i=1;i<=m;i++)
 	{
@@ -51,7 +53,7 @@ int InitializeTransTree(Vertex *transtree, double *exptimes, double *inftimes, d
 			}
 		transtree[i] = currpar;
 		
-		if (currpar == -999) numinits++;
+		if (currpar == -999) numinits++;	/* numinits counts the number of initial infecteds -- should only be one */
 		
 		/* Add infectious pressure associated with this infection to A 
 		   Since we're starting out assuming the only edges are those  
@@ -68,6 +70,9 @@ int InitializeTransTree(Vertex *transtree, double *exptimes, double *inftimes, d
 		}
 	*initexp = lowexp;	
 	
+	for (i = (m+1); i <= N; i++)	/* Set transmission tree entries for susceptibles to -77; this is the code for non-infected (i.e., susceptible) */
+		transtree[i] = -77;
+	
 	return(numinits);
 }
 
@@ -75,16 +80,14 @@ int InitializeTransTree(Vertex *transtree, double *exptimes, double *inftimes, d
 /**************************
  InitializeNetworkFromTree
 
-Initializes the I-I contact nework, given the transmission tree.
+Initializes the contact network, given the transmission tree.
 Just adds the edges associated with the transmission tree,
-by calling NetworkInitialize(). Sets the number of I-S edges
-to 0 for each infected, and the total number of S-S edges to 0.
+by calling NetworkInitialize(). 
 **************************/
 
-Network InitializeNetworkFromTree(Vertex *transtree, int m, Vertex nsus, Vertex N)
+Network InitializeNetworkFromTree(Vertex *transtree, int m, Vertex N)
 {
-	Vertex *head = (Vertex *) malloc((m-1) * sizeof(Vertex));
-	Vertex *tail = (Vertex *) malloc((m-1) * sizeof(Vertex));
+	Vertex head[m-1], tail[m-1];
 	int i, count = 0;
 	
 	for(i=1; i<=m; i++)				/* For each node that isn't the initial exposed, add an edge corresponding to its exposure */
@@ -94,8 +97,8 @@ Network InitializeNetworkFromTree(Vertex *transtree, int m, Vertex nsus, Vertex 
 			tail[count] = transtree[i];
 			count++;
 		}
-								
-	return(NetworkInitialize(head,tail,m-1,m,nsus,N));	/* Initialize the network with only the edges corresponding to the trans tree */
+	
+	return(NetworkInitialize(head,tail,m-1,m,N));	/* Initialize the network with only the edges corresponding to the trans tree */
 }
 
 
@@ -130,18 +133,15 @@ Vertex ProposedInitExp(Vertex initexp, Vertex *transtree, int m)
 /************************
 ProposedInitialExptime
 
-Generates a proposal for the exposure time of the initial exposed (I_Kappa)
+Generates a proposal for the exposure time of the initial exposed (E_Kappa)
 The proposal is an exponential RV subtracted from the minimum possible exposure time
-Theta is a tuning parameter.  In the case of the SEIR model, the minimum possible  
+Theta is a tuning parameter.  In the case of the SEIR model, the maximum possible  
 exposure time is simply the transition (from exposed to infectious) time of the initial exposed.
 ************************/
 
 double ProposedInitialExptime(Vertex init, double *inftimes, double delta)
 {	
-	double mintime = inftimes[init];
-	double offset = rexp(1/delta);
-
-	return(mintime - offset);	
+	return(inftimes[init] - rexp(1/delta));	
 }
 
 
@@ -154,13 +154,10 @@ interval of possible exposure times for the node.  The proposal is
 used in a Hastings update step.
 *************************/
 
-double ProposedExptime(Vertex j,Vertex *transtree,double *inftimes)
+double ProposedExptime(Vertex j, Vertex *transtree, double *inftimes)
 {
-	double mintime, maxtime;
+	double maxtime = inftimes[j], mintime = inftimes[transtree[j]];
 	
-	maxtime = inftimes[j];    /* Contruct the window of possible exposure times */
-	mintime = inftimes[transtree[j]];
-				
 	return(unif_rand() * (maxtime - mintime) + mintime);	/* Sample uniformly on (mintime, maxtime) */
 }
 
@@ -176,11 +173,9 @@ used in a Hastings update step.
 
 double ProposedInftime(Vertex j, Vertex *transtree, double *exptimes, double *inftimes, double *rectimes, int m)
 {
-	double mintime, maxtime;
+	double mintime = exptimes[j], maxtime = rectimes[j];	/* Contruct the window of possible trans times */
 	
-	mintime = exptimes[j];    /* Contruct the window of possible trans times */
-	maxtime = rectimes[j];
-	for (Vertex i=1; i<=m; i++)	/* mintime and maxtime are the lower and upper bounds that we're sampling inftimes[j] uniformly from    */
+	for (Vertex i=1; i<=m; i++)	/* mintime and maxtime are the lower and upper bounds that we're sampling inftimes[j] uniformly from */
 		if (transtree[i] == j) maxtime = MIN(maxtime, exptimes[i]);
 				
 	return(unif_rand() * (maxtime - mintime) + mintime);	/* Sample uniformly on (mintime, maxtime) */
@@ -191,20 +186,24 @@ double ProposedInftime(Vertex j, Vertex *transtree, double *exptimes, double *in
 DrawTransTree
 
 Generates a transmission tree (P) from its full conditional
-distribution.  For each infected node, sample uniformly 
-among the vertices that could possibly be its parents.
-Node with parent = -999 is the initial exposed 
+distribution.  For each infected node, sample 
+among the vertices that could possibly be its parents, possibly
+giving the putative parent node ("probparentprior") more weight 
+(a multiplier specified by "probparentmult").
+Node with parent = -999 is the initial exposed.  Only need to
+update the first m nodes; these are the only ones that are actually
+part of the transmission tree, since these are the ones that were
+infected during the course of the epidemic.
 ******************************/
 
 void DrawTransTree(Vertex *transtree, Network *nwp, double *exptimes, double *inftimes, double *rectimes, int m, int *probparentprior, int *probparentmult)
 {
-	double maxrand, posspar;
+	double maxrand;
 	Vertex currpar;
 
 	for (Vertex i=1; i<=m; i++)	/* Find the parent of each Vertex i; the vector of parents comprises the trans. tree */
 	{
-		maxrand = 0; posspar = -1; currpar = -999;
-		
+		maxrand = 0; currpar = -999;		
 		if (((nwp->inedges)+i)->value != 0) DrawParent(nwp->inedges,i,i,exptimes,inftimes,rectimes,&maxrand,&currpar,probparentprior[i],*probparentmult);
 		if (((nwp->outedges)+i)->value != 0) DrawParent(nwp->outedges,i,i,exptimes,inftimes,rectimes,&maxrand,&currpar,probparentprior[i],*probparentmult);
 		transtree[i] = currpar;
@@ -240,7 +239,7 @@ void DrawParent(TreeNode *edges, Edge orig, Edge x, double *exptimes, double *in
 				temprand = unif_rand();
 				expo = pow( temprand , ( 1.0 / (probmult - 1) ) ); 
 				posspar = MAX( posspar, expo );		// Can use the distribution of the max order stat. instead of actually drawing each uniform RV
-				} */									// This is perhaps more efficient
+				} */									// Thought it may be more efficient, but it's actually slower, due to the "pow()" function
 				
 			if (posspar > *maxrand)		/* If no Vertices could possibly be the parent, then the parent  will stay at -999, which indicates that it's the initial infected */		
 			{
@@ -250,7 +249,26 @@ void DrawParent(TreeNode *edges, Edge orig, Edge x, double *exptimes, double *in
 		}
 		DrawParent(edges, orig, (edges+x)->right, exptimes, inftimes, rectimes, maxrand, currpar, priorparentnode, probmult);
 	}
+}
 
+
+/*************************
+CalcEdgeProb
+
+Calculates the probability of an edge between two nodes,
+given the current values of the parameters, and the 
+dyadic covariates.
+*************************/
+
+double CalcEdgeProb(int dyadcovindex, double *dyadcovs, double *eta, int etapars, int N)
+{
+	double tempsum = 0;
+	int k, totaldyads = (N)*(N-1)/2;
+	
+	for (k = 0; k < etapars; k++)
+		tempsum += eta[k] * dyadcovs[k*totaldyads + dyadcovindex];
+		
+	return( exp(tempsum) / ( 1 + exp(tempsum) ) );
 }
 
 
@@ -258,62 +276,39 @@ void DrawParent(TreeNode *edges, Edge orig, Edge x, double *exptimes, double *in
 DrawGraph
 
 Sample the contact network (G) from its full conditional, given all of the other 
-parameters (including P).  Also sets the number of I-S edges for each infected, 
-and the total number of S-S edges.  Changing G also changes the total infectious 
+parameters (including P).  Changing G also changes the total infectious 
 pressure applied during the epidemic (A), so this is modified as well.
+We cycle through the dyads in a random order -- testing indicated that this
+runs about 15% quicker than updating the dyads in numerical order.
 ******************************/
 
-void DrawGraph(Network *nwp, Vertex *transtree, double *exptimes, double *inftimes, double *rectimes, double currbeta, double p, int m, double *A)
+void DrawGraph(Network *nwp, Vertex *transtree, double *exptimes, double *inftimes, double *rectimes, double currbeta, double *dyadcovs, int *dyadindex1, int *dyadindex2, double *eta, int etapars, double *A)
 {
-	double u, timeinfected; 						
-	Vertex i,j, priorinf, latterinf;
-			
-	for (j=1; j<=m; j++)	/* Cycle through each dyad - make sure that we consider each dyad (a,b) where a became infectious before b  */
-		for(i=1; i<j; i++)
-		{			
-			priorinf = MININDEX(inftimes,i,j);		/* Set priorinf to the node (i or j) with the earlier infection time, and latterinf to the node with the later infection time */
-			latterinf = MAXINDEX(inftimes,i,j);
-			
-			u = exp(-currbeta*(MAX(MIN(rectimes[priorinf], exptimes[latterinf])  - inftimes[priorinf] , 0)));	/* Construct the probability of an I-I edge existing */
-			u = u*p / (1 - p + u*p);
+	double u, v, pij; 
+	Vertex i, j, k, priorinf, latterinf, dyadcovindex;
 
-			if ((unif_rand() < u) || (transtree[latterinf] == priorinf))	/* Randomly determine if the edge exists - the edge will exist with prob. u, unless it's part of the trans tree in which case it always exists */
-			{
-				if ( !EDGE_EXISTS( priorinf, latterinf, nwp ) )
-				{
-					ToggleEdge( priorinf, latterinf, nwp );	/* Edge doesn't exist, but we need it, so add it */
-					*A += MAX(MIN( exptimes[latterinf], rectimes[priorinf] ) - inftimes[priorinf] , 0);	/* Add in the associated infectious pressure */							
-				}
-			} else
-			{
-				if ( EDGE_EXISTS(priorinf,latterinf,nwp) )
-				{
-					ToggleEdge( priorinf, latterinf, nwp );	/* Edge exists, but we don't want it, so delete it */
-					*A -= MAX(MIN( exptimes[latterinf], rectimes[priorinf] ) - inftimes[priorinf] , 0);	/* Subtract out the associated infectious pressure */		
-				}
-			}
-		}
+	for (k=1; k<=((nwp->N)*((nwp->N)-1)/2); k++)
+	{	
+		i = dyadindex1[k]; 
+		j = dyadindex2[k];
 
-	nwp->totaledges = 0;  /* Reset edge count:  Total number of edges = # of I-S edges + # of S-S edges + # of I-I edges */
-	
-	/* For each infected, set number of edges to susceptibles, i.e., # of I-S edges */
-	for (i=1; i<=m; i++) 
-	{
-		timeinfected = rectimes[i] - inftimes[i]; /* This is the amount of time that Vertex i was infected for */
-		*A -= nwp->nisedges[i] * timeinfected;	/* Subtract out old I-S infectious pressure based on old number of I-S edges */
+		dyadcovindex =  GetDyadIndex(i, j, (nwp->N));
 		
-		u = exp( -currbeta * timeinfected );	/* Construct the probability of an I-S edge existing */
-		u = u * p / ( 1 - p + u*p );
+		priorinf = MININDEX(inftimes,i,j);		/* Set priorinf to the node (i or j) with the earlier infection time, and latterinf to the node with the later infection time */
+		latterinf = MAXINDEX(inftimes,i,j);		/* If the two times are equal, these macros will set priorinf to j and latterinf to i */
 		
-		nwp->nisedges[i] = rbinom( nwp->nsus , u );	/* Generate number of I-S edges for (infected) Vertex i  */
+		pij = CalcEdgeProb(dyadcovindex, dyadcovs, eta, etapars, nwp->N); 		/* Calculate probability of edge between nodes i and j) */
 		
-		*A += nwp->nisedges[i] * timeinfected;	/* Add in new I-S infectious pressure based on new number of I-S edges */
-		nwp->totaledges += nwp->nisedges[i];
-	}
+		//if (unif_rand() < 0.001) Rprintf("i = %d, j = %d, pij = %f \n", i, j, pij);
+		
+		u = exp(-currbeta*(MAX(MIN(rectimes[priorinf], exptimes[latterinf])  - inftimes[priorinf] , 0)));	/* Construct the probability of an edge existing */
+		v = u*pij / (1 - pij + u*pij);
 
-	nwp->nssedges = rbinom( nwp->nsus * ( nwp->nsus - 1 ) / 2 , p );		/* Get total number of edges between susceptibles */
-	
-	nwp->totaledges += nwp->nssedges + nwp->niiedges;
+		if ((unif_rand() < v) || (transtree[latterinf] == priorinf))	/* Randomly determine if the edge exists - the edge will exist with prob. u, unless it's part of the trans tree in which case it always exists */
+			*A += AddEdgeToTrees(i, j, nwp) * MAX(MIN( exptimes[latterinf], rectimes[priorinf] ) - inftimes[priorinf] , 0);	/* If necessary, add the edge and the associated infectious pressure */
+		else
+			*A -= DeleteEdgeFromTrees(i, j, nwp) * MAX(MIN( exptimes[latterinf], rectimes[priorinf] ) - inftimes[priorinf] , 0);	/* If necessary, delete the edge and the associated infectious pressure */						
+	}	
 }
 
 
@@ -323,7 +318,8 @@ GetRandomOrder
 Used to determine the (uniformly random) order in which
 to update the exposure/infection times.  Returns a vector with the random 
 order of the infecteds.  When updating the exposure times, we exclude
-the initial exposed, because it's updated separately 
+the initial exposed, because it's updated separately.  Also use this
+routine to set the random order to cycle through the dyads.
 ************************/
 
 void GetRandomOrder (Vertex *order, Vertex initexp, int includeinit, int m)
@@ -348,11 +344,63 @@ void GetRandomOrder (Vertex *order, Vertex initexp, int includeinit, int m)
 }
 
 
+/***************************
+ GetDyadIndex
+  
+ Used to find out which group a particular dyad belongs to.  Takes the two node indices
+ of the individuals in the dyad and returns the index in the dyad group array corresponding
+ to the dyad.  If the first index is a and the second index is b, then index for the dyad
+ is [N*(a-1)] + [(b-a)-1] - [a*(a-1)/2].  
+ To get the group that this dyad belongs to, we then have to look up the dyad in the dyad 
+ group array, using this index.
+ ***************************/
+
+int GetDyadIndex(int nodeindex1, int nodeindex2, int N)
+{
+	int a = MIN(nodeindex1, nodeindex2), b = MAX(nodeindex1, nodeindex2);
+	
+	return((N * (a - 1)) + ((b - a) - 1) - (a * (a - 1) / 2));
+}
+
+
+/************************
+ CreateRandomDyadOrder
+
+ When updating the graph (G), we update each dyad individually.
+ This function creates a random ordering of dyads that we use to
+ cycle through all of the dyads.  (We don't want to update in order
+ because doing so will create potentially very unbalanced tree structures
+ -- we store the edges for a node in binary trees.)  dyadindex1 will
+ contain the first node in each dyad (the smaller number), and dyadindex2 
+ will contain the second node (larger number) in the dyad.
+**************************/
+ 
+void CreateRandomDyadOrder(int *dyadindex1, int *dyadindex2, int N)
+{
+	int i, j, totaldyads = (N)*(N-1)/2;	/* There are N-choose-2 dyads */
+	
+	GetRandomOrder(dyadindex2, 0, 1, totaldyads);	/* Create a random permutation of the numbers 1..N-choose-2 */
+
+	/* Convert the numbers 1 .. N-choose-2 to dyad indices */
+	for (i = 1; i <= totaldyads; i++) dyadindex1[i] = 1;	
+
+	for (j = 1; j <= (N-2); j++)	
+		for (i = 1; i <= totaldyads; i++)
+			if ( (dyadindex2[i] > (N-j)) && (dyadindex1[i] >= j) )
+			{
+				dyadindex1[i]++;
+				dyadindex2[i] -= (N-j);
+			}
+
+	for (i = 1; i <= totaldyads; i++) dyadindex2[i] += dyadindex1[i];
+}
+
+
 /****************************
 LogLikelihood
 
-Calculates the likelihood function, excluding the indicator of whether
-or not the transmission tree is legal
+Calculates the log-likelihood function, excluding the indicator of whether
+or not the transmission tree is legal.
 ****************************/
 
 double LogLikelihood(double beta, double thetai, double ki ,double thetae, double ke, int m, double A, double B, double Bln, double C, double Cln)
@@ -387,7 +435,6 @@ int IsTreeLegal(double *exptimes, double *inftimes, double *rectimes, int *trans
 {	
 	Vertex i;
 	int j = 0, initialexp = 1;
-	double lowexptime;
 		
 	/* Check if there's only one initial exposed (parent = - 999) */
 	for (i=1; i<=m; i++) 	
@@ -399,7 +446,6 @@ int IsTreeLegal(double *exptimes, double *inftimes, double *rectimes, int *trans
 	if (j > 1) return(0);
 	
 	/* Make sure initial infected has lowest exposure time */
-	lowexptime = exptimes[initialexp];
 	for (i=1; i<=m; i++)
 		if (i != initialexp)
 			if (exptimes[i] < exptimes[initialexp])
@@ -411,7 +457,7 @@ int IsTreeLegal(double *exptimes, double *inftimes, double *rectimes, int *trans
 			if ( (inftimes[transtree[i]] > exptimes[i]) || (exptimes[i] > rectimes[transtree[i]]) || ( !EDGE_EXISTS(transtree[i],i,nwp) ) ) 
 				return(0);
 
-	/* Make sure E_j < I_j < R_j for each node j */		
+	/* Make sure E_j <= I_j <= R_j for each node j */		
 	for (i=1; i<=m; i++)
 		if ( (exptimes[i] > inftimes[i]) || (inftimes[i] > rectimes[i]) )
 			return(0);		
@@ -424,9 +470,9 @@ int IsTreeLegal(double *exptimes, double *inftimes, double *rectimes, int *trans
 /**********************
 AdjustAiiExpTime
 
-Calculates the change in infectious pressure associated with a 
-proposed change in the infection time for one node,due to I-I edges.
-Uses a recursive algorithm, and is based on the function InOrderTreeWalk()
+Calculates the change in infectious pressure (A) associated with a 
+proposed change in the infection time for one node.
+Uses a recursive algorithm.
 ************************/
 
 void AdjustAiiExpTime(TreeNode *edges, Edge orig, Edge x, double *exptimes, double *pexptimes, double *inftimes, double *rectimes, double *propA)
@@ -451,10 +497,10 @@ void AdjustAiiExpTime(TreeNode *edges, Edge orig, Edge x, double *exptimes, doub
 /******************************
 AdjustABExpTime
 
-Calculates the change in infectious pressure associated with a 
-proposed change in the infection time for one node. For the change 
-due to I-I edges, use a recursive algorithm twice - once for the inedges 
-and once for the outedges.  There is no change due to I-S edges.
+Calculates the changes in infectious (A) and transition (B, Bln) 
+ pressures associated with a proposed change in the infection 
+ time for one node.  Uses a recursive algorithm twice - once 
+ for the inedges and once for the outedges.
 *****************************/
 
 void AdjustABExpTime(Network *nwp, Edge orig, double *exptimes, double *pexptimes, double *inftimes, double *rectimes, double *propA, double *propB, double *propBln)
@@ -472,9 +518,9 @@ void AdjustABExpTime(Network *nwp, Edge orig, double *exptimes, double *pexptime
 /**********************
 AdjustAiiInfTime
 
-Calculates the change in infectious pressure associated with a 
-proposed change in the transition time for one node,due to I-I edges.
-Uses a recursive algorithm, and is based on the function InOrderTreeWalk()
+Calculates the change in infectious pressure (A) associated with a 
+proposed change in the transition time for one node.
+Uses a recursive algorithm.
 ************************/
 
 void AdjustAiiInfTime(TreeNode *edges, Edge orig, Edge x, double *exptimes, double *inftimes, double *pinftimes, double *rectimes, double *propA)
@@ -502,20 +548,19 @@ void AdjustAiiInfTime(TreeNode *edges, Edge orig, Edge x, double *exptimes, doub
 /******************************
 AdjustABCInfTime
 
-Calculates the change in infectious pressure associated with a proposed 
-change in the transition time for one node. For the change due to I-I edges, 
-use a recursive algorithm twice - once for the inedges and once for the outedges.
-The change due to I-S edges can be calculated directly.
+Calculates the change in infectious (A), transition (B, Bln), and removal (C, Cln) pressures
+ associated with a proposed change in the transition time for one node.  
+Uses a recursive algorithm twice - once for the inedges and once for the outedges.
 *****************************/
 
-void AdjustABCInfTime(Network *nwp, Edge orig, double *exptimes,  double *inftimes, double *pinftimes, double *rectimes, 
+void AdjustABCInfTime(Network *nwp, Edge orig, double *exptimes, double *inftimes, double *pinftimes, double *rectimes, 
 	double *propA, double *propB, double *propBln, double *propC, double *propCln)
 {
+	/* Adjust A */
 	if (((nwp->outedges)+orig)->value != 0) AdjustAiiInfTime(nwp->outedges,orig,orig,exptimes,inftimes,pinftimes,rectimes,propA);
 	if (((nwp->inedges)+orig)->value != 0) AdjustAiiInfTime(nwp->inedges,orig,orig,exptimes,inftimes,pinftimes,rectimes,propA);															
-	*propA += (inftimes[orig] - pinftimes[orig]) * nwp->nisedges[orig];		/* Adjust A for I-S edges */ 
 	
-	/* Adjust B and C */
+	/* Adjust B and C, and their log versions */
 	*propB += pinftimes[orig] - inftimes[orig];
 	*propBln += log(pinftimes[orig] - exptimes[orig]) - log(inftimes[orig] - exptimes[orig]);
 	*propC += inftimes[orig] - pinftimes[orig];
@@ -524,8 +569,10 @@ void AdjustABCInfTime(Network *nwp, Edge orig, double *exptimes,  double *inftim
 
 
 /*********************
-Adjust AClnKappa
+AdjustAClnKappa
 
+ Calculates the change in infectious (A) and log-removal (Cln) pressures
+ associated with a change in the initial exposed (kappa). 
 *********************/
 
 void AdjustAClnKappa(Network *nwp, Edge initexp, Edge pinitexp, double *exptimes,  double *pexptimes, 
@@ -540,16 +587,13 @@ void AdjustAClnKappa(Network *nwp, Edge initexp, Edge pinitexp, double *exptimes
 
 	if (((nwp->outedges)+initexp)->value != 0) AdjustAiiInfTime(nwp->outedges,initexp,initexp,pexptimes,inftimes,pinftimes,rectimes,propA);
 	if (((nwp->inedges)+initexp)->value != 0) AdjustAiiInfTime(nwp->inedges,initexp,initexp,pexptimes,inftimes,pinftimes,rectimes,propA);															
-	*propA += (inftimes[initexp] - pinftimes[initexp]) * nwp->nisedges[initexp];
 	
 	if (((nwp->outedges)+pinitexp)->value != 0) AdjustAiiInfTime(nwp->outedges,pinitexp,pinitexp,pexptimes,inftimes,pinftimes,rectimes,propA);
 	if (((nwp->inedges)+pinitexp)->value != 0) AdjustAiiInfTime(nwp->inedges,pinitexp,pinitexp,pexptimes,inftimes,pinftimes,rectimes,propA);															
-	*propA += (inftimes[pinitexp] - pinftimes[pinitexp]) * nwp->nisedges[pinitexp];
 	
 	/* Adjust Cln */
 	*propCln += log(rectimes[initexp] - pinftimes[initexp]) - log(rectimes[initexp] - inftimes[initexp]);
-	*propCln += log(rectimes[pinitexp] - pinftimes[pinitexp]) - log(rectimes[pinitexp] - inftimes[pinitexp]);
-	
+	*propCln += log(rectimes[pinitexp] - pinftimes[pinitexp]) - log(rectimes[pinitexp] - inftimes[pinitexp]);	
 }
 
 
@@ -569,10 +613,74 @@ double LogkPrior(double x, double *kprior, int *kpriordist)
 		logdens = Rf_dgamma(x,kprior[0],kprior[1],1); /* Calculate log-density of prior distribution, evaluated at x */
 	else if (*kpriordist == 0)	/* Uniform prior */
 		logdens = 0;		/* We've already checked to make sure the proposal is in the bounds, so nothing to do here */
-		
+	else if (*kpriordist == 2)	/* Flat prior */
+		logdens = 0;		/* Nothing to do here */
+	else if (*kpriordist == 3)  /* Normal prior */
+		logdens = dnorm(x,kprior[0],kprior[1],1);
+	
 	return(logdens);
 }
 
+
+/**************
+ LogEdgeCalc
+ 
+ Recursive routine to calculate the numerator of the log-density
+ of the graph, since this only depends on the dyads in which an
+ edge is present.  Only called by LogGraphCalc().
+ **************/
+
+void LogEdgeCalc(TreeNode *edges, int orig, int x, double *eta, int etapars, double *dyadcovs, int totaldyads, double *logdensptr, int N)
+{
+	int q, dyadindex;
+	
+	if (x != 0) 
+	{
+		LogEdgeCalc(edges, orig, (edges+x)->left, eta, etapars, dyadcovs, totaldyads, logdensptr, N);
+		
+		dyadindex = GetDyadIndex(orig, (edges+x)->value, N);
+		for (q = 0; q < etapars; q++)
+			(*logdensptr) += eta[q] * dyadcovs[q*totaldyads + dyadindex];				
+		
+		LogEdgeCalc(edges, orig, (edges+x)->right, eta, etapars, dyadcovs, totaldyads, logdensptr, N);
+	}
+}
+
+
+/************************
+LogGraphCalc
+
+Calculates the log of the ERGM pdf, given the current state
+ of the graph and the eta parameters.  Uses a recursive algorithm
+ to traverse the graph for the numerator; cycles through all dyads
+ to calculate the denominator.
+*************************/
+
+double LogGraphCalc(Network *nwp, double *eta, int etapars, double *dyadcovs)
+{
+	int i, j, q, dyadindex, totaldyads = (int) (nwp->N) * ( (nwp->N) - 1 ) / 2;
+	double tempsum, logdens = 0, *logdensptr = &logdens;
+	
+	/* Calculate numerator */
+	for(i=1; i<=(nwp->N); i++) 
+		if (((nwp->outedges) + i) -> value != 0)
+			LogEdgeCalc(nwp->outedges, i, i, eta, etapars, dyadcovs, totaldyads, logdensptr, (nwp->N));
+	
+	/* Calculate denominator */
+	for (i = 1; i < (nwp->N); i++)
+	{
+		for (j = i + 1; j <= (nwp->N); j++)
+		{			
+			tempsum = 0;
+			dyadindex = GetDyadIndex(i, j, (nwp->N));
+			for (q = 0; q < etapars; q++)
+				tempsum += eta[q] * dyadcovs[q*totaldyads + dyadindex];
+
+			logdens -= log(1 + exp(tempsum));
+		}	
+	}
+	return(logdens);
+}
 
 
 /* **************************** */
@@ -585,80 +693,103 @@ epigraphmcmcc
 Main MCMC function to produce a sample of the parameters.  
 ************************/
 
-void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int *thinning,  double *bprior, double *tiprior, double *teprior, double *pprior, double *kiprior,
-	double *keprior, int *ninf, int *initN, double *initbeta, double *initthetai, double *initki, double *initthetae, double *initke, double *initp,  int *bpriordist, 
-	int *tipriordist, int *tepriordist, int *kipriordist, int *kepriordist, int *accept, int *propose, double *abeta, double *athetai, double *aki, double *athetae, double *ake ,double *ap, 
-	int *ainit, double *ainitexptime, double *aexptimes, double *ainftimes, int *atranstree, int *extrathinning, int *inferEtimes, int *inferItimes, int *parentprior, int *probparentmult)
+void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, double *dyadcovs, int *nsamp, int *thinning,  double *bprior, double *tiprior, double *teprior, double *etaprior, double *kiprior,
+	double *keprior, int *ninf, int *initN, double *initbeta, double *initthetai, double *initki, double *initthetae, double *initke, double *initeta,  int *bpriordist, 
+	int *tipriordist, int *tepriordist, int *kipriordist, int *kepriordist, int *etapriordist, double *etapropsd, int *accept, int *propose, double *allkd, double *abeta, double *athetai, double *aki, double *athetae, double *ake ,double *aeta, 
+	int *ainit, double *ainitexptime, double *aexptimes, double *ainftimes, int *atranstree, int *extrathinning, int *inferEtimes, int *inferItimes, int *parentprior, int *probparentmult,
+	int *verbose)
 { 
 
 	GetRNGstate();  /* R function enabling uniform RNG */ 
 	
 	/* VARIABLE DECLARATIONS */
 	
-	Network gr, *nwp=&gr;
-	int m = *ninf; 							// m = # of infecteds (considered fixed and known); note that this variable holds the same constant as nwp->ninfnodes, just have it here for convenience 
-	double llkd, pllkd, currlogprior, proplogprior;					// Variables to hold current and proposed values of the log-likelihoodand priors
-	Vertex *transtree = (Vertex *) malloc((m+1) * sizeof(Vertex));	// transtree[i] holds the label of the node that infected node i in the current infection tree...
-	Vertex *ptranstree = (Vertex *) malloc((m+1) * sizeof(Vertex));		// ... ptranstree is the proposal version
-	Vertex *orderrand = (Vertex *) malloc((m+1) * sizeof(Vertex));		// Update the inf/exp times in random order - orderrand holds this random order
-	int iter, ok = 1, zz, i, j, currcount, propcount;					// dummy & counter variables
-	double currbeta = *initbeta, currthetai = *initthetai, currthetae = *initthetae; // Starting values for the parameters...
-	double p = *initp, currki = *initki, currke = *initke;	//... starting values for more parameters
-	double A, propA, B = 0, propB, Bln = 0, propBln, C = 0, propC, Cln = 0, propCln;				// Variables to keep track of infectious, transition and removal pressure
-	double *exptimes = (double *) malloc((m+1) * sizeof(double));				// Use indices 1..m and leave 0 unused to be consistent with Network object and R
-	double *pexptimes = (double *) malloc((m+1) * sizeof(double));			// These hold the current and proposed exposure times
-	double *inftimes = (double *) malloc((m+1) * sizeof(double));				
-	double *pinftimes = (double *) malloc((m+1) * sizeof(double));			// These hold the current and proposed infection times
-	double *rectimes = (double *) malloc((m+1) * sizeof(double));			// These hold the recovery times
-	int *probparentprior = (int *) malloc((m+1) * sizeof(int));			// These hold the prior belief about most likely parent nodes
-	Vertex initexp, pinitexp;						// These hold the current and proposed initial exposeds (Kappa)	
-	double propthetai, propthetae, propbeta, propki, propke;	// Variables to hold proposal valuesfor parameters
+	Network gr, *nwp=&gr;								/* This is the network that holds the edges between individuals in the population */
+	int m = *ninf, N = *initN; 							/* m = # of infecteds (considered fixed and known); note that this variable holds the same constant as nwp->ninfnodes, just have it here for convenience.  Similar story for N. */
+	double llkd = 0, pllkd = 0, currlogprior, proplogprior;					/* Variables to hold current and proposed values of the log-likelihood and log-priors */
+	Vertex *transtree = (Vertex *) malloc((N+1) * sizeof(Vertex));	/* transtree[i] holds the label of the node that infected node i in the current infection tree... */
+	Vertex *ptranstree = (Vertex *) malloc((N+1) * sizeof(Vertex));		/* ... ptranstree is the proposal version */
+	Vertex *orderrand = (Vertex *) malloc((m+1) * sizeof(Vertex));		/* Update the inf/exp times in random order - orderrand holds this random order (only need to update the infecteds) */
+	int *dyadindex1 = (int *) malloc(((N)*(N-1)+1) * sizeof(int));		/* Holds the first node of each dyad - this is used to cycle through the dyads in random order */
+	int *dyadindex2 = (int *) malloc(((N)*(N-1)+1) * sizeof(int));		/* Holds the second node of each dyad - this is used to cycle through the dyads in random order */
+	int iter, ok = 1, zz, i, j, currcount, propcount, lastiter = 1;					/* dummy & counter variables */
+	int percentcomplete = 1;										/* Percent of the MCMC iterations that have been completed */
+	time_t last_t, curr_t;
+	double currbeta = *initbeta, currthetai = *initthetai, currthetae = *initthetae; /* Starting values for some of the parameters... */
+	double currki = *initki, currke = *initke;	/*... starting values for more parameters */
+	double *eta = (double *) malloc((*etapars) * sizeof(double));		/* Current values of eta parameters (one for each dyadic parameter) */
+	double *propeta = (double *) malloc((*etapars) * sizeof(double));		/* Proposed values of eta parameters (one for each dyadic parameter) */
+	double A, propA, B = 0, propB, Bln = 0, propBln, C = 0, propC, Cln = 0, propCln;				/* Variables to keep track of infectious, transition and removal pressures, and their log versions */
+	double *exptimes = (double *) malloc((N+1) * sizeof(double));				/* Use indices 1..N and leave 0 unused to be consistent with Network object and R (1..m are the infecteds) */ 
+	double *pexptimes = (double *) malloc((N+1) * sizeof(double));			/* These hold the current and proposed exposure times */
+	double *inftimes = (double *) malloc((N+1) * sizeof(double));				
+	double *pinftimes = (double *) malloc((N+1) * sizeof(double));			/* These hold the current and proposed infection times */
+	double *rectimes = (double *) malloc((N+1) * sizeof(double));			/* These hold the recovery times, considered fixed and known */
+	int *probparentprior = (int *) malloc((m+1) * sizeof(int));			/* These hold the prior belief about most likely parent for each node */
+	Vertex initexp, pinitexp;						/* These hold the current and proposed identity of the initial exposed (Kappa)	*/
+	double propthetai, propthetae, propbeta, propki, propke;	/* Variables to hold proposal values for parameters */
 	double delta = 0.5, uniwidth = 5;	// Tuning parameters - maybe will pass them in or figure out a way to automatically set them - these values seem to work reasonably well...
 	double bwidth = (bprior[1] - bprior[0])/uniwidth, tiwidth = (tiprior[1] - tiprior[0])/uniwidth, tewidth = (teprior[1] - teprior[0])/uniwidth;
 	double kiwidth = (kiprior[1] - kiprior[0])/uniwidth, kewidth = (keprior[1] - keprior[0])/uniwidth;	// Variables used in case of uniform priors
 	int maxmove = 11;	// Sets the number of updates in each sweep of the algorithm
 	
 	/* INITIALIZE VARIABLES */
-
-	for (i = 0; i < m; i++) 
+	
+	if (*verbose == 1) Rprintf("Initializing variables for MCMC. \n");
+			
+	for (i = 0; i < N; i++) 
 	{
-		exptimes[i+1] = etime[i];		/* Copy initial exposure times(since they might change during the procedure)	*/
-		inftimes[i+1] = itime[i];	/* Copy initial infection times(since they might change during the procedure)	*/
+		exptimes[i+1] = etime[i];		/* Copy initial exposure times (since they might change during the procedure)	*/
+		inftimes[i+1] = itime[i];	/* Copy initial infection times (since they might change during the procedure)	*/
 		rectimes[i+1] = rtime[i];	/* Copy recovery times just for indexing consistency  */
-		probparentprior[i+1] = parentprior[i];	/* Copy prior beliefs about parents just for indexing consistency  */
+		if (i < m) probparentprior[i+1] = parentprior[i];	/* Copy prior beliefs about parents just for indexing consistency  */
 	}
-		
- 	if (InitializeTransTree(transtree, exptimes, inftimes, rectimes, m, &initexp, &A) != 1) 	/* Initializes transmission tree, determines the initial infected, and calculates the amount of  infection pressure (A) due to the transmission tree */
+
+	for (i = (m+1); i <= N; i++)	/* Set permanent values of proposed I and E times for susceptibles -- these should never change */
+	{
+		pexptimes[i] = exptimes[i];
+		pinftimes[i] = inftimes[i];
+	}
+	
+	for (i = 0; i < (*etapars); i++)	/* Eta parameters are indexed 0 .. (etapars - 1) */
+		eta[i] = initeta[i];
+	
+ 	if (InitializeTransTree(transtree, exptimes, inftimes, rectimes, m, N, &initexp, &A) != 1) 	/* Initializes transmission tree, determines the initial infected, and calculates the amount of infectionus pressure (A) due to the transmission tree */
 	{
 		Rprintf("Faulty exposure/infection/recovery time data.  Cannot build legal initial transmission tree.  Aborting routine. \n");
 		return;
 	}
-	
-	gr = InitializeNetworkFromTree(transtree, m, *initN-m, *initN);	/* Initialize network to only contain the edges from the transmission tree */		
-	
+		
+	gr = InitializeNetworkFromTree(transtree, m, N);	/* Initialize network to only contain the edges from the transmission tree */		
 	if (!IsTreeLegal(exptimes,inftimes,rectimes,transtree,nwp,m)) 		/* If initial transmission tree isn't legal, then the set of infection times and recovery times are somehow faulty, so we print an error and abort */
 	{
 		Rprintf("Faulty exposure/infection/recovery time data.  Cannot build legal initial transmission tree.  Aborting routine. \n");
 		return;
 	}
 
-	for (i=1; i <= m; i++)	/* Calculate initial transition and removal pressures and their "log" versions */
+	for (i=1; i <= m; i++)	/* Calculate initial transition and removal pressures and their log versions -- only the infecteds add to these pressures */
 	{
 		C += rectimes[i] - inftimes[i];
 		Cln += log(rectimes[i] - inftimes[i]);
 		B += inftimes[i] - exptimes[i];
 		Bln += log(inftimes[i] - exptimes[i]);
 	}
+
+	CreateRandomDyadOrder(dyadindex1, dyadindex2, N);		/* Create random order to update dyads with updating the graph -- will use the same order throughout */
 	
-	DrawGraph(nwp, transtree, exptimes, inftimes, rectimes, currbeta, p, m, &A);  /* Draw initial graph from its full conditional dist. */
-		
+	DrawGraph(nwp, transtree, exptimes, inftimes, rectimes, currbeta, dyadcovs, dyadindex1, dyadindex2, eta, *etapars, &A);  /* Draw initial graph from its full conditional dist. */
+
+	last_t = time(NULL);
+	
 	/* BEGIN MAIN MCMC LOOP */
+	
+	if (*verbose == 1) Rprintf("Beginning MCMC. \n");
 	
 	for (iter = 0; iter < ( (*nsamp) * (maxmove) ); iter++)
 	{
 		
-		zz = iter % (maxmove);		/* Cyclical updates - can change this line to update different sets of parameters or change the order of updates */		
-		if (zz <= 7) propose[zz] ++;		/* Not currently keeping track of propose / accept info for E/I times or Kappa */
+		zz = iter % (maxmove);		// Cyclical updates - can change this line to update different sets of parameters or change the order of updates
+		if (zz <= 7) propose[zz] ++;		// Not currently keeping track of propose / accept info for E/I times or Kappa
 		switch(zz)		/* Choose which item (parameter) to update */
 		{
 			
@@ -668,21 +799,45 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 			accept[zz]++;
 			break;
 
-		case 1:	/* Update p */
+		case 1:	/* Update eta parameters */
 						
-			p = rbeta( nwp->totaledges + pprior[0], ( nwp->N ) * ( nwp->N - 1 ) / 2 - nwp->totaledges + pprior[1] ); /* Beta is the conjugate prior for p - use Gibbs sampler to update p */
-			accept[zz]++;
+			/* For right now, doing a block update on eta */
+			/* Will go back to update one-at-a-time and make more efficient later */
+				
+			ok = 1;
+			for (i = 0; i < (*etapars); i++)	
+				propeta[i] = eta[i] + norm_rand() * etapropsd[i];
+
+			pllkd = LogGraphCalc(nwp, propeta, *etapars, dyadcovs);
+			llkd = LogGraphCalc(nwp, eta, *etapars, dyadcovs);
+			proplogprior = 0;
+			currlogprior = 0;
+			for (i = 0; i < (*etapars); i++)
+				proplogprior += LogkPrior(propeta[i], &etaprior[2*i], &etapriordist[i]);
+			for (i = 0; i < (*etapars); i++)
+				currlogprior += LogkPrior(eta[i], &etaprior[2*i], &etapriordist[i]);
+
+			if ( log(unif_rand()) > (pllkd + proplogprior - llkd - currlogprior) )
+				ok = 0;
+								
+			if (ok == 1)
+			{
+				for (i = 0; i < (*etapars); i++)
+					eta[i] = propeta[i];						
+				accept[zz]++;					
+			}
+			
 			break;
 			
 		case 2:	/* Update graph (G) */
 		
-			DrawGraph(nwp, transtree, exptimes, inftimes, rectimes, currbeta, p, m,  &A);
+			DrawGraph(nwp, transtree, exptimes, inftimes, rectimes, currbeta, dyadcovs, dyadindex1, dyadindex2, eta, *etapars,  &A);
 			accept[zz]++;
 			break;						
 
 		case 3:	/* Update Beta	*/
 			
-			if (*bpriordist == 0)	/* Uniform prior for Beta */
+			if (*bpriordist == 0)	/* Uniform prior for Beta -- use MH random walk update */
 			{
 				ok = 1;			
 				propbeta = currbeta + unif_rand()*bwidth - bwidth/2;
@@ -698,7 +853,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 					accept[zz]++;
 					currbeta = propbeta;
 				}
-			} else if(*bpriordist == 1)	/* Gamma (conjugate) prior for Beta */
+			} else if(*bpriordist == 1)	/* Gamma (conjugate) prior for Beta -- use Gibbs update */
 			{
 				currbeta = rgamma( bprior[0] + m - 1, 1 / ( ( 1 / bprior[1] ) + A ) );
 				accept[zz]++;
@@ -707,7 +862,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 						
 		case 4:	/* Update Theta_I */
 		
-			if (*tipriordist == 0)	/* Uniform prior for Theta_I */
+			if (*tipriordist == 0)	/* Uniform prior for Theta_I -- use MH random walk update */
 			{
 				ok = 1;			
 				propthetai = currthetai + unif_rand()*tiwidth - tiwidth/2;
@@ -723,7 +878,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 					accept[zz]++;
 					currthetai = propthetai;
 				}
-			} else if(*tipriordist == 1)	/* Inverse Gamma (conjugate) prior for Theta_I */
+			} else if(*tipriordist == 1)	/* Inverse Gamma (conjugate) prior for Theta_I -- use Gibbs update */
 			{
 				currthetai = 1/rgamma( tiprior[0] + currki*m, 1/ (tiprior[1] + C) );			
 				accept[zz]++;
@@ -733,7 +888,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 		case 5:  /* Update k_I parameter for removal process */	
 			
 			ok = 1;
-			propki = currki + unif_rand()*kiwidth - kiwidth/2;
+			propki = currki + unif_rand()*kiwidth - kiwidth/2;	/* Random walk MH update */
 
 			if (*kipriordist == 1)	/* Check to see if we've proposed a value outside the prior bounds before proceeding further */
 			{
@@ -763,7 +918,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 
 		case 6:		/* Update theta_E */
 
-			if (*tepriordist == 0)	/* Uniform prior for Theta_E */
+			if (*tepriordist == 0)	/* Uniform prior for Theta_E -- use MH Random Walk update */
 			{
 				ok = 1;			
 				propthetae = currthetae + unif_rand()*tewidth - tewidth/2;
@@ -779,7 +934,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 					accept[zz]++;
 					currthetae = propthetae;
 				}
-			} else if(*tepriordist == 1)	/* Inverse Gamma (conjugate) prior for Theta_E */
+			} else if(*tepriordist == 1)	/* Inverse Gamma (conjugate) prior for Theta_E -- use Gibbs update */
 			{
 				currthetae = 1/rgamma( teprior[0] + currke*m, 1/ (teprior[1] + B) );			
 				accept[zz]++;
@@ -790,7 +945,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 		case 7:		/* Update k_E */
 
 			ok = 1;
-			propke = currke + unif_rand()*kewidth - kewidth/2;
+			propke = currke + unif_rand()*kewidth - kewidth/2;		/* MH Random walk update */
 
 			if (*kepriordist == 1)	/* Check to see if we've proposed a value outside the prior bounds before proceeding further */
 			{
@@ -818,7 +973,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 			
 			break;
 			
-		case 8:		/* Update infection times */
+		case 8:		/* Update infection times (I) */
 
 			if (*inferItimes == 0) break;			/* If the infection times are known and fixed, then there's nothing to do here. */
 			
@@ -828,19 +983,19 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 
 			GetRandomOrder(orderrand, initexp, 1, m);	/* Orderrand contains the (random) order to update infection times  */
 			
-			for (i=1; i <= m; i++)	/* Cycle through the nodes  */
+			for (i=1; i <= m; i++)	/* Cycle through the (infected) nodes  */
 			{
 				ok = 1;
 				j = orderrand[i];	/* Update infection time for Vertex j */
 				
 				pinftimes[j] = ProposedInftime(j,transtree, exptimes, inftimes, rectimes, m);	/* Get proposed infection time for vertex j */
-				if (IsTreeLegal(exptimes,pinftimes,rectimes,transtree,nwp,m) == 0) ok = 0;	/* If proposed times don't result in a legal tree, no need to calculate the rest of the likelihood */
+				if (IsTreeLegal(exptimes,pinftimes,rectimes,transtree,nwp,m) == 0) ok = 0;	/* If proposed time doesn't result in a legal tree, no need to calculate the rest of the likelihood */
 								
 				if (ok == 1) 		/* We've proposed a legal infection time, now check to see if we accept it */
 				{
 					propA = A; propB = B; propBln = Bln; propC = C; propCln = Cln;
 					AdjustABCInfTime(nwp, j, exptimes, inftimes, pinftimes, rectimes, &propA, &propB, &propBln, &propC, &propCln);
-					pllkd = LogLikelihood(currbeta,currthetai, currki, currthetae, currke, m, propA, propB, propBln, propC, propCln);
+					pllkd = LogLikelihood(currbeta, currthetai, currki, currthetae, currke, m, propA, propB, propBln, propC, propCln);
 					if (log(unif_rand()) > (pllkd - llkd) ) ok = 0;				
 				}
 				
@@ -859,7 +1014,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 
 			if (*inferEtimes == 0) break;			/* If the exposure times are known and fixed, then there's nothing to do here. */
 
-			for (i=1; i <=m; i++) pexptimes[i] = exptimes[i];		/* Initialize proposed exposure times - will start with current exposure times and update one at a time*/
+			for (i=1; i <=m; i++) pexptimes[i] = exptimes[i];		/* Initialize proposed exposure times - will start with current exposure times and update one at a time */
 			
 			llkd = LogLikelihood(currbeta,currthetai, currki, currthetae, currke, m, A, B, Bln, C, Cln); 	/* Calculate current log likelihood */
 
@@ -869,20 +1024,20 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 			{
 				ok = 1;
 				j = orderrand[i];	/* Update exposure time for Vertex j */
-				pexptimes[j] = ProposedExptime(j,transtree,inftimes);	/* Get proposed exposure time for vertex j */
-				if (IsTreeLegal(pexptimes,inftimes,rectimes,transtree,nwp,m) == 0) ok = 0;	/* If proposed times don't result in a legal tree, no need to calculate the rest of the likelihood */
+				pexptimes[j] = ProposedExptime(j, transtree, inftimes);	/* Get proposed exposure time for vertex j */
+				if (IsTreeLegal(pexptimes, inftimes, rectimes, transtree, nwp, m) == 0) ok = 0;	/* If proposed time doesn't result in a legal tree, no need to calculate the rest of the likelihood */
 				
 				if (ok == 1) 		/* We've proposed a legal time, now check to see if we accept it */
 				{
-					propA = A; propB = B; propBln = Bln; propC = C; propCln = Cln;
+					propA = A; propB = B; propBln = Bln;
 					AdjustABExpTime(nwp, j, exptimes, pexptimes, inftimes, rectimes, &propA, &propB, &propBln);
-					pllkd = LogLikelihood(currbeta,currthetai, currki, currthetae, currke, m, propA, propB, propBln, propC, propCln);
+					pllkd = LogLikelihood(currbeta,currthetai, currki, currthetae, currke, m, propA, propB, propBln, C, Cln);
 					if (log(unif_rand()) > (pllkd - llkd) ) ok = 0;
 				}
 				
 				if (ok == 1) 		/* Accepted */
 				{		
-					A = propA; B = propB; Bln = propBln; C = propC; Cln = propCln;
+					A = propA; B = propB; Bln = propBln;
 					exptimes[j] = pexptimes[j];							
 					llkd = pllkd;
 				}
@@ -913,6 +1068,8 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 			
 		case 10:		/* Update which vertex is the initial exposed (Kappa)  */
 			
+			ok = 1;
+				
 			if ( (*inferItimes == 0) || (*inferEtimes == 0) ) break;			/* If the infection or exposure times are known and fixed, then there's nothing to do here. */
 			
 			for (i = 1; i <= m; i++) 
@@ -930,7 +1087,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 			pinftimes[initexp] = inftimes[pinitexp];		/* Swap proposal infection times */
 			pinftimes[pinitexp] = inftimes[initexp];			
 			
-			ptranstree[pinitexp] = -999;			/* Swap proposal direction of infection  */
+			ptranstree[pinitexp] = -999;			/* Swap proposal direction of initial infection  */
 			ptranstree[initexp] = pinitexp;
 							
 			if ( !IsTreeLegal(pexptimes,pinftimes,rectimes,ptranstree,nwp,m) ) ok = 0;		/* If the proposal produces an illegal tree, no need to calculate the likelihood */		
@@ -969,6 +1126,16 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 			break;			
 			
 		}
+
+		if (*verbose == 1)
+			if ( iter  >  ( (*nsamp) * (maxmove) * (percentcomplete) / 100 ) )
+			{
+				curr_t = time(NULL);
+				Rprintf("%d of %d MCMC iterations complete (%d secs/%d iterations). \n", (percentcomplete * (*nsamp) / 100), (*nsamp) , (int) difftime(curr_t, last_t) , (int) ((iter - lastiter)/maxmove));
+				percentcomplete++;
+				lastiter = iter;
+				last_t = curr_t;
+			}		
 		
 		if (iter % ( (maxmove) * (*thinning) ) == 0)		
 		{  
@@ -978,10 +1145,13 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 			aki[j] = currki;
 			athetae[j] = currthetae;
 			ake[j] = currke;
-			ap[j] = p;
 			ainitexptime[j] = exptimes[initexp];
 			ainit[j] = initexp;
-			
+			allkd[j] = (ok == 1) ? pllkd : llkd;
+
+			for (i = 0; i < (*etapars); i++)
+				aeta[j*(*etapars)+i] = eta[i];						/* Record eta parameter values */
+						
 			R_CheckUserInterrupt();			/* Occasionally check for an R user interrupt */
 			
 			if (*extrathinning > 0)			/* Record exposure and infection time, as well as the transmission tree, if desired */
@@ -993,19 +1163,22 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *nsamp, int
 						aexptimes[j*m+i - 1] = exptimes[i];
 						ainftimes[j*m+i - 1] = inftimes[i];
 						atranstree[j*m+i - 1] = transtree[i];
-					}
+					}					
 				}
 		}
-
 	}	/* End MCMC loop */
 			
+	if (*verbose == 1) Rprintf("MCMC complete.\n");
+	
 	/* Return memory used before leaving */
 	NetworkDestroy(nwp);
-	free(transtree);
-	free(ptranstree);
-	free(exptimes);
-	free(pexptimes);
-	free(rectimes);
+	free(transtree); free(ptranstree);
+	free(exptimes); free(pexptimes);
+	free(inftimes); free(pinftimes);
+	free(rectimes); free(orderrand);
+	free(dyadindex1); free(dyadindex2);
+	free(probparentprior);
+	free(eta); free(propeta);
 	
 	PutRNGstate(); /* Must be called after GetRNGstate before returning to R */
 

@@ -5,33 +5,33 @@
 # Internal function used by epibayesmcmc
 # Determines start values for Infective times (I) if needed
 
-itimestartvalues <- function(inf.list)
+itimestartvalues <- function(epidata)
 {	
 	# Want to scroll through in order of increasing E times -- indexset gives this order
-	indexset <- order(rank(inf.list[,3]))
+	indexset <- order(rank(epidata[,3]))
 	
 	# Set initial I time
-	inf.list[indexset[1],4] <- runif(1,inf.list[indexset[1],3],inf.list[indexset[2],3])
-	currrectime <- nextrectime <- inf.list[indexset[1],5]
+	epidata[indexset[1],4] <- runif(1,epidata[indexset[1],3],epidata[indexset[2],3])
+	currrectime <- nextrectime <- epidata[indexset[1],5]
 	nextrec <- indexset[1]
 	
 	# Cycle through the remaining individuals
-	for (i in 2:length(inf.list[,4]))
+	for (i in 2:length(epidata[,4]))
 	{		
-		if (inf.list[indexset[i],3] > currrectime)
+		if (epidata[indexset[i],3] > currrectime)
 		{
 			currrectime <- nextrectime
-			inf.list[nextrec,4] <- runif(1,inf.list[nextrec,3],inf.list[indexset[i],3])
+			epidata[nextrec,4] <- runif(1,epidata[nextrec,3],epidata[indexset[i],3])
 		}		
-		inf.list[indexset[i],4] <- runif(1,inf.list[indexset[i],3],inf.list[indexset[i],5])
-		if(inf.list[indexset[i],5] > nextrectime)
+		epidata[indexset[i],4] <- runif(1,epidata[indexset[i],3],epidata[indexset[i],5])
+		if(epidata[indexset[i],5] > nextrectime)
 		{
-			nextrectime <- inf.list[indexset[i],5]
+			nextrectime <- epidata[indexset[i],5]
 			nextrec <- indexset[i]
 		}
 	}
 	
-	return(inf.list[,4])
+	return(epidata[,4])
 }
 
 
@@ -39,16 +39,16 @@ itimestartvalues <- function(inf.list)
 # Internal function used by epibayesmcmc
 # Determines start values for Exposure times (E) if needed
 
-etimestartvalues <- function(inf.list,initialoffset)
+etimestartvalues <- function(epidata,initialoffset)
 {	
-	for (i in 1:length(inf.list[,3]))
+	for (i in 1:length(epidata[,3]))
 	{
 		currpar <- -999
 		maxrand <- 0
 		posspar <- 0
-		for (j in 1:length(inf.list[,3]))
+		for (j in 1:length(epidata[,3]))
 		{
-			if (inf.list[i,4] > inf.list[j,4])	
+			if (epidata[i,4] > epidata[j,4])	
 			posspar <- runif(1,0,1)
 			if (posspar > maxrand)
 			{
@@ -57,35 +57,51 @@ etimestartvalues <- function(inf.list,initialoffset)
 			}
 		}
 		if (currpar == -999) 
-			inf.list[i,3] <- inf.list[i,4] - initialoffset
+			epidata[i,3] <- epidata[i,4] - initialoffset
 		else
-			inf.list[i,3] <- runif(1,inf.list[currpar,4], min(inf.list[currpar,5],inf.list[i,4]))
+			epidata[i,3] <- runif(1,epidata[currpar,4], min(epidata[currpar,5],epidata[i,4]))
 	}	
-	return(inf.list[,3])
+	return(epidata[,3])
 }
 
 
 # FUNCTION epibayesmcmc
 # R wrapper for C function that performs Bayesian MCMC inference
 
-epibayesmcmc <- function(inf.list, nsamp, thinning, bprior, tiprior, teprior, pprior = c(5,N), kiprior, 
-	keprior, N=ninf, priordists="gamma", betapriordist=priordists, thetaipriordist=priordists, 
-	thetaepriordist=priordists, kipriordist = priordists, kepriordist=priordists, extrathinning=FALSE,
-	inferEtimes = FALSE, inferItimes = FALSE, parentprobmult = 1)
+epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, tiprior, 
+    teprior, etaprior, kiprior, keprior, etapropsd, priordists = "gamma", betapriordist = priordists, 
+    thetaipriordist = priordists, thetaepriordist = priordists, etapriordist = rep("normal", times=etapars), 
+    kipriordist = priordists, kepriordist = priordists, extrathinning = FALSE, inferEtimes = FALSE, 
+    inferItimes = FALSE, parentprobmult = 1, verbose = TRUE)
 {		
 	
 	# Check overall input format
 	
-	if (!is.numeric(inf.list)) stop("Invalid input format: inf.list must by numeric")
-			
-	ninf <- length(inf.list[,5])
+	if (!is.numeric(epidata)) stop("Invalid input format: epidata must by numeric")
+	if (length(dim(epidata)) != 2) stop ("Invalid input format: epidata must be a two-dimensional matrix")
+		
+	# N = number of individuals in population
 	
-	if (N < ninf)	# number of nodes must be at least the number of infected
+	N = dim(epidata)[1] 
+
+	# Do some processing on dyadic covariate matrix
+
+	# Create a default dyadic covariate matrix and determine if we are using the default matrix
+	
+	if (is.null(dyadiccovmat)) 
 	{
-		cat("Illegal N Value - setting N equal to number of infecteds!")
-		N <- ninf
-	}
+		defaultmatrix <- TRUE
+		dyadiccovmat <- matrix(data=c(t(combn(N,2)),rep(1,times=choose(N,2))),byrow=FALSE,ncol=3,dimnames=list(NULL,c("Node ID 1","Node ID 2","Edges")))
+	} else defaultmatrix <- FALSE
 	
+	etapars <- dim(dyadiccovmat)[2] - 2
+	
+	if (length(etapropsd) != etapars) stop("Invalid input: length(etapropsd) must equal the number of eta parameters in the model")
+		
+	if( is.null(dimnames(dyadiccovmat)[[2]]))
+		etanames <- paste("factor",1:etapars)
+	else etanames <- dimnames(dyadiccovmat)[[2]][-(1:2)]
+
 	# Do some cleanup of parameters
 	
 	nsamp <- floor(nsamp)
@@ -93,67 +109,94 @@ epibayesmcmc <- function(inf.list, nsamp, thinning, bprior, tiprior, teprior, pp
 	extrathinning <- floor(extrathinning)
 	
 	maxmove <- 11
-	
+		
 	# Do some processing on infection/recovery times:
 	
 	# (1) Shift infection and recovery times so that the first recovery happens at time 0
 	# 	 This is necessary since the prior on the initial infected is from -Inf to 0
 	
-	inf.list[,3:5] <- inf.list[,3:5] - min(inf.list[,5])
+	epidata[,3:5] <- epidata[,3:5] - min(epidata[,5], na.rm = TRUE)
 			
 	# (2a) Set initial values of parameters
-	# 	For beta, thetai, thetae, ki, ke, and p, we're starting these parameters at the mean of their respective prior distributions
-	#		(except for the theta parameters -- we're starting them at their modes, since they may not have means)
-	# 	Beta, ki, ke, thetai, and thetae have Gamma/IG (or uniform) priors, and p has a Beta prior
+	# 	For beta, thetai, thetae, ki, ke, we are starting these parameters at the mean of their respective prior distributions
+	#		(except for the theta parameters -- we are starting them at their modes, since they may not have means)
+	# 	Beta, ki, ke, thetai, and thetae have Gamma/IG (or uniform) priors
+	#	Starting all of the eta parameters at 0 (for flat priors) or the prior mean (for normal priors)
 	
 	if(betapriordist == "gamma") initbeta <- bprior[1]*bprior[2] else initbeta <- (bprior[1]+bprior[2])/2
 	if(thetaipriordist == "gamma") initthetai <- tiprior[2]/(tiprior[1] + 1) else initthetai <- (tiprior[1]+tiprior[2])/2
 	if(thetaepriordist == "gamma") initthetae <- teprior[2]/(teprior[1] + 1) else initthetae <- (teprior[1]+teprior[2])/2
 	if(kipriordist == "gamma") initki <- kiprior[1]*kiprior[2] else initki <- (kiprior[1]+kiprior[2])/2
 	if(kepriordist == "gamma") initke <- keprior[1]*keprior[2] else initke <- (keprior[1]+keprior[2])/2
-	initp <- pprior[1]/(pprior[1]+pprior[2])
 
+	initeta <- rep(0,times=etapars)
+	for (i in 1:etapars)
+		if(etapriordist[i] == "normal")
+			initeta[i] <- etaprior[2*i-1]
+				
+	if (verbose)
+	{
+		cat("epibayesmcmc run started at ",format(Sys.time(), "%Y-%m-%d %X"),"\n")
+		cat("\n Initial parameter values \n")
+		cat("------------------------------ \n")
+		cat("Beta = ",initbeta,"\n")
+		for (i in 1:etapars)
+			cat("eta_",i-1, " = ", initeta[i], "\n")
+		cat("Theta_I = ",initthetai,"\n")
+		cat("Theta_E = ",initthetae,"\n")
+		cat("k_I = ",initki,"\n")
+		cat("k_E = ",initke,"\n \n")
+	}
+		
 	# (2b) Set values for prior distributions
-	#	0 indicates a uniform prior dist, and 1 indicates a gamma/IG prior dist (can expand this to more options later)
-	#	p is assumed to have a beta dist in all cases
-	
+	#	0 indicates a uniform prior dist
+	#	1 indicates a gamma/IG prior dist
+	#	2 indicates a flat prior (not currently used)
+	#	3 indicates a normal prior (mean, sd)
+
 	bpriordistnum <- 1*(betapriordist == "gamma")
 	tipriordistnum <- 1*(thetaipriordist == "gamma")
 	tepriordistnum <- 1*(thetaepriordist == "gamma")
 	kipriordistnum <- 1*(kipriordist == "gamma")
-	kepriordistnum <- 1*(kepriordist == "gamma")
+	kepriordistnum <- 1*(kepriordist == "gamma")	
+	etapriordistnum <- 2 + 1*(etapriordist == "normal")
 	
-	# (3a) Check Removal time data
+	# (3a) Find number of infecteds in population
 	
-	if (sum(is.na(inf.list[,5])) > 0) stop("Invalid input data: NA not allowed for removal times.") 
+	ninf <- min(which(is.na(epidata[,5])),dim(epidata)[1] + 1) - 1
 	
-	# (3b) Determine starting values for E/I times, if we're inferring these times (if not, make sure we have legitimate values)
+	# Set E, I, and R times of susceptibles to "infinity"; basically, any constant that is larger than all of the other times (by 10 here)
+	if (N > ninf) epidata[(ninf+1):(N),3:5] <- max(epidata[1:ninf,(3:5)],na.rm=TRUE) + 10
+	
+	if (verbose) cat("Epidemic data: ", ninf, "infecteds,", N - ninf, "susceptibles, ", N, "total individuals. \n \n")
+	
+	# (3b) Determine starting values for E/I times, if we are inferring these times (if not, make sure we have legitimate values)
 	
 	if (inferItimes) 
 	{
 		if (inferEtimes) 
-			inf.list[,4] <- inf.list[,5] - rgamma(length(inf.list[,4]),initki,1/initthetai) 
+			epidata[(1:ninf),4] <- epidata[(1:ninf),5] - rgamma(ninf,initki,1/initthetai) 
 		else 
 		{
-			if (sum(is.na(inf.list[,3])) > 0) stop("Invalid input data: NAs found in Exposure times -- run with InferEtimes = TRUE.") 
-			if (sum(inf.list[,3] > inf.list[,5]) > 0) stop("Invalid input data: Exposure times cannot occur after Removal times.")
-			inf.list[,4] <- itimestartvalues(inf.list) 
+			if (sum(is.na(epidata[(1:ninf),3])) > 0) stop("Invalid input data: NAs found in Exposure times -- run with InferEtimes = TRUE.") 
+			if (sum(epidata[(1:ninf),3] > epidata[(1:ninf),5]) > 0) stop("Invalid input data: Exposure times cannot occur after Removal times.")
+			epidata[(1:ninf),4] <- itimestartvalues(epidata[(1:ninf),]) 
 		}
 	}
 	else
-		if (sum(is.na(inf.list[,4])) > 0) stop("Invalid input data: NAs found in Infective times -- run with InferItimes = TRUE.") 
+		if (sum(is.na(epidata[(1:ninf),4])) > 0) stop("Invalid input data: NAs found in Infective times -- run with InferItimes = TRUE.") 
 		
 	if (inferEtimes) 
 	{
-		if (sum(inf.list[,4] > inf.list[,5]) > 0) stop("Invalid input data: Infective times cannot occur after Removal times.")
-		inf.list[,3] <- etimestartvalues(inf.list,initke*initthetae)	
+		if (sum(epidata[(1:ninf),4] > epidata[(1:ninf),5]) > 0) stop("Invalid input data: Infective times cannot occur after Removal times.")
+		epidata[(1:ninf),3] <- etimestartvalues(epidata[(1:ninf),],initke*initthetae)	
 	}
 	else
-		if (sum(is.na(inf.list[,3])) > 0) stop("Invalid input data: NAs found in Exposure times -- run with InferEtimes = TRUE.") 
+		if (sum(is.na(epidata[(1:ninf),3])) > 0) stop("Invalid input data: NAs found in Exposure times -- run with InferEtimes = TRUE.") 
 	
 	# (4) Set up storage for extra stuff returned (E/I times and transmission tree)
-	#	Note: if we're not inferring the E/I times, then we just return NULL for these values
-	#	There are generally too many times to return each iteration (we'll run out of space)
+	#	Note: if we are not inferring the E/I times, then we just return NULL for these values
+	#	There are generally too many times to return each iteration (we run out of space)
 	#	So instead, if we want to return these, we use the variable "extrathinning" as the extra thinning interval
 	
 	if (extrathinning == 0)
@@ -169,49 +212,105 @@ epibayesmcmc <- function(inf.list, nsamp, thinning, bprior, tiprior, teprior, pp
 	}
 		
 	# (5) Do translation (renaming) of nodes and probable parent info
-	inf.list[,1:2] <- floor(inf.list[,1:2])
+	epidata[,1:2] <- floor(epidata[,1:2])
 	
 	# (5a) Check for invalid parent references
-	for (i in 1:length(inf.list[,2]))
-		if (!is.na(inf.list[i,2]) & (!(inf.list[i,2] %in% inf.list[,1]) | (inf.list[i,2] == inf.list[i,1]))) 
+	for (i in 1:ninf)
+		if (!is.na(epidata[i,2]) & (!(epidata[i,2] %in% epidata[(1:ninf),1]) | (epidata[i,2] == epidata[i,1]))) 
 			stop("Invalid input data: bad parent reference")
 	
 	# (5b) Fill in any missing IDs	
-	nextid <-max(inf.list[,1],0,na.rm=TRUE)+1
-	for (i in 1:length(inf.list[,1]))
-		if (is.na(inf.list[i,1]))
+	nextid <-max(epidata[,1],0,na.rm=TRUE)+1
+	for (i in 1:length(epidata[,1]))
+		if (is.na(epidata[i,1]))
 		{
-			inf.list[i,1] <- nextid
+			epidata[i,1] <- nextid
 			nextid <- nextid +1
 		}
 		
 	# (5c) Check for duplicate IDs	
-	if(length(inf.list[,1]) > length(unique(inf.list[,1])))
+	if(length(epidata[,1]) > length(unique(epidata[,1])))
 		stop("Invalid input data: non-unique node IDs")
 		
 	# (5d) Rename Node IDs
-	parentprior <- rep(0, times=length(inf.list[,2]))
-	for (i in 1:length(inf.list[,2]))
-		if(!is.na(inf.list[i,2]))
-			parentprior[i] <- which(inf.list[,1] == inf.list[i,2])
-		
+	parentprior <- rep(0, times=ninf)
+	for (i in 1:ninf)
+		if(!is.na(epidata[i,2]))
+			parentprior[i] <- which(epidata[(1:ninf),1] == epidata[i,2])		
+			
+	# (5e) Re-sort dyadic covariates
+	if(!defaultmatrix)
+	{
+	counter <- 1	
+	sorteddyadiccovmat <- matrix(ncol=etapars,nrow=N*(N-1)/2)
+
+	for (i in 1:(N-1))
+	{
+		for (j in (i+1):N)
+		{
+			if (epidata[i,1] < epidata[j,1])
+			{
+				minindex <- epidata[i,1]
+				maxindex <- epidata[j,1]
+			} else
+			{
+				minindex <- epidata[j,1]
+				maxindex <- epidata[i,1]
+			}			
+			firstindex <- which(dyadiccovmat[,1]==minindex)
+			secondindex <- which(dyadiccovmat[,2]==maxindex)
+			sorteddyadiccovmat[counter,] <- dyadiccovmat[intersect(firstindex,secondindex),-(1:2)]
+			counter <- counter + 1
+		}
+	}
+	
+	changed <- FALSE
+	for (i in 1:etapars)
+		for(j in 1:(N*(N-1)/2))
+			if (dyadiccovmat[j,i+2] != sorteddyadiccovmat[j,i])
+				changed <- TRUE
+
+	if (verbose)
+	{
+		if (changed) cat("Re-sorted dyadic covariates.\n")
+			else cat("Dyadic covariates not re-sorted.\n")
+	}
+	
+	} else sorteddyadiccovmat <- dyadiccovmat[,-(1:2)]
+
+	
+	if (verbose)
+	{
+		cat("Coefficient names: \n")
+		for (i in 1:etapars)
+			cat("eta", i-1, ": ", etanames[i], "\n")
+		cat("\n")
+	}
+
 	# Call C function to do actual MCMC routine
 	
-	output <- .C("epigraphmcmcc",as.double(inf.list[,3]),as.double(inf.list[,4]), as.double(inf.list[,5]),as.integer(nsamp),as.integer(thinning),as.double(bprior), 
-		as.double(tiprior), as.double(teprior), as.double(pprior), as.double(kiprior), as.double(keprior), as.integer(ninf),as.integer(N), 
-		as.double(initbeta),as.double(initthetai), as.double(initki), as.double(initthetae), as.double(initke), as.double(initp), as.integer(bpriordistnum), 
-		as.integer(tipriordistnum), as.integer(tepriordistnum), as.integer(kipriordistnum), as.integer(kepriordistnum), accept=as.integer(array(0,maxmove-3)),
-		propose=as.integer(array(0,maxmove-3)), betaout = as.double(array(0,nsamp/thinning)), thetaiout=as.double(array(0,nsamp/thinning)), 
-		kiout=as.double(array(0,nsamp/thinning)), thetaeout=as.double(array(0,nsamp/thinning)), keout=as.double(array(0,nsamp/thinning)), 
-		p=as.double(array(0,nsamp/thinning)),initexp=as.integer(array(0,nsamp/thinning)), initexptime=as.double(array(0,nsamp/thinning)), 
-		exptimes = as.double(storeexptimes), inftimes = as.double(storeinftimes), transtree = as.integer(storetranstree), as.integer(extrathinning),
-		as.integer(1*inferEtimes), as.integer(1*inferItimes), as.integer(parentprior), as.integer(parentprobmult),PACKAGE="epinet" 
-		)
+	output <- .C("epigraphmcmcc",as.double(epidata[,3]),as.double(epidata[,4]), as.double(epidata[,5]), as.integer(etapars), 
+		as.double(sorteddyadiccovmat), as.integer(nsamp), as.integer(thinning),as.double(bprior), as.double(tiprior), as.double(teprior), as.double(etaprior), 
+		as.double(kiprior), as.double(keprior), as.integer(ninf), as.integer(N), as.double(initbeta),as.double(initthetai), as.double(initki), as.double(initthetae), 
+		as.double(initke), as.double(initeta), as.integer(bpriordistnum), as.integer(tipriordistnum), as.integer(tepriordistnum), as.integer(kipriordistnum), 
+		as.integer(kepriordistnum) ,as.integer(etapriordistnum), as.double(etapropsd), accept=as.integer(array(0,maxmove-3)), propose=as.integer(array(0,maxmove-3)), 
+		llkd = as.double(array(0,nsamp/thinning)), betaout = as.double(array(0,nsamp/thinning)), 
+		thetaiout=as.double(array(0,nsamp/thinning)), kiout=as.double(array(0,nsamp/thinning)), thetaeout=as.double(array(0,nsamp/thinning)), 
+		keout=as.double(array(0,nsamp/thinning)), eta=as.double(array(0,(nsamp/thinning)*etapars)), initexp=as.integer(array(0,nsamp/thinning)), 
+		initexptime=as.double(array(0,nsamp/thinning)), exptimes = as.double(storeexptimes), inftimes = as.double(storeinftimes), 
+		transtree = as.integer(storetranstree), as.integer(extrathinning), as.integer(1*inferEtimes), as.integer(1*inferItimes), as.integer(parentprior), 
+		as.integer(parentprobmult), as.integer(1*verbose)
+	, PACKAGE="epinet"
+	)
 	
 	# Post-processing	
 	
+	# Arrange eta into an array, with the samples for each group corresponding to one column
+	etaout <- aperm(array(output$eta,dim=c(etapars,nsamp/thinning)))
+	dimnames(etaout) <- list(NULL,covariates=etanames)
+	
 	# Reverse translate nodes for initinf (back to original node IDs)
-	initexpout <- inf.list[output$initexp,1]
+	initexpout <- epidata[output$initexp,1]
 	
 	if(extrathinning == 0)
 	{	
@@ -224,11 +323,11 @@ epibayesmcmc <- function(inf.list, nsamp, thinning, bprior, tiprior, teprior, pp
 		infout <- array(output$inftimes,dim=c(ninf,nsamp/(thinning*extrathinning)))
 		# Back translate transmission tree to their original node IDs
 		output$transtree[output$transtree == -999] <- NA
-		transtreeout <- array(inf.list[output$transtree,1],dim=c(ninf,nsamp/(thinning*extrathinning)))		
-	}
+		transtreeout <- array(epidata[output$transtree,1],dim=c(ninf,nsamp/(thinning*extrathinning)))		
+	}		
 	
-	return(list(accept=output$accept,propose=output$propose,beta=output$betaout,thetai=output$thetaiout,thetae=output$thetaeout,ki=output$kiout,
-		ke=output$keout, p=output$p,initexp=initexpout, initexptime=output$initexptime,exptimes=expout,inftimes=infout,rectimes=inf.list[,5],nodeid=inf.list[,1],
+	return(list(accept=output$accept,propose=output$propose,llkd=output$llkd, beta=output$betaout,thetai=output$thetaiout,thetae=output$thetaeout,ki=output$kiout,
+		ke=output$keout, eta=etaout,initexp=initexpout, initexptime=output$initexptime,exptimes=expout,inftimes=infout,rectimes=epidata[,5],nodeid=epidata[,1],
 		transtree=transtreeout))
 	
 }

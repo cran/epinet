@@ -4,10 +4,23 @@ plotepitree <- function(epi, lwd = 1, leaf.labs = TRUE, leaf.cex = 0.75,
 	e.col = "black", i.col = "red", lty.transmission = 3, marktransitions = TRUE, 
 	label.trans = "|", cex.trans = 0.5, ...){
         
-        if (zero.at.start) epi[,3:5] = epi[,3:5] - min(epi[,3:5])
-
-        # find total number of infecteds and get vertical positions for infecteds
+        # find total number of infecteds -- need at least 2 infecteds in the epidemic
         ninf <- nrow(epi)
+		if (ninf < 2) stop("Plot error: need at least two infecteds to plot the epidemic.")
+
+	# remove susceptibles
+		susc <- NULL
+		for (i in 1:ninf) if(sum(is.na(epi[i,3:5]))==3) susc <- c(susc,i)
+		if (length(susc)>0) epi <- epi[-susc,]	
+        ninf <- nrow(epi)
+		if (ninf < 2) stop("Plot error: need at least two infecteds to plot the epidemic.")
+		
+	# make sure we have full data
+	if(sum(is.na(epi[,3:5])) > 0) stop("Plot error: need full data to plot the epidemic -- run again with all times known.")
+	if(sum(is.na(epi[,1])) > 0) stop("Plot error: missing entries in first (Node ID) column.")
+	if(sum(is.na(epi[,2])) > 1) stop("Plot error: too many NA values in second (Parent) column -- should only have one initial infected node.")
+	
+        if (zero.at.start) epi[,3:5] = epi[,3:5] - min(epi[,3:5])
  	
 	# sort the epidemic by increasing order of exposure
 	epi <- epi[order(epi[ ,3]), ]
@@ -55,6 +68,7 @@ plotepitreemcmc <- function(mcmcoutput, index = lastiteration, lwd = 1,
 	marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...) {
 
 	lastiteration <- length(mcmcoutput$exptimes[1, ])
+	if (lastiteration == 0) stop("Error: need inferred exposure and infectious times for this function")
 	epi <- cbind(mcmcoutput$nodeid, mcmcoutput$transtree[ ,index], mcmcoutput$exptimes[ ,index], 
 		mcmcoutput$inftimes[ ,index], mcmcoutput$rectimes)
 
