@@ -712,8 +712,8 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 	Vertex *orderrand = (Vertex *) malloc((m+1) * sizeof(Vertex));		/* Update the inf/exp times in random order - orderrand holds this random order (only need to update the infecteds) */
 	int *dyadindex1 = (int *) malloc(((N)*(N-1)+1) * sizeof(int));		/* Holds the first node of each dyad - this is used to cycle through the dyads in random order */
 	int *dyadindex2 = (int *) malloc(((N)*(N-1)+1) * sizeof(int));		/* Holds the second node of each dyad - this is used to cycle through the dyads in random order */
-	int iter, ok = 1, zz, i, j, currcount, propcount, lastiter = 1;					/* dummy & counter variables */
-	int percentcomplete = 1;										/* Percent of the MCMC iterations that have been completed */
+	int ok = 1, zz, i, j, currcount, propcount;					/* dummy & counter variables */
+	long iter;
 	time_t last_t, curr_t;
 	double currbeta = *initbeta, currthetai = *initthetai, currthetae = *initthetae; /* Starting values for some of the parameters... */
 	double currki = *initki, currke = *initke;	/*... starting values for more parameters */
@@ -732,7 +732,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 	double bwidth = (bprior[1] - bprior[0])/uniwidth, tiwidth = (tiprior[1] - tiprior[0])/uniwidth, tewidth = (teprior[1] - teprior[0])/uniwidth;
 	double kiwidth = (kiprior[1] - kiprior[0])/uniwidth, kewidth = (keprior[1] - keprior[0])/uniwidth;	// Variables used in case of uniform priors
 	int maxmove = 11;	// Sets the number of updates in each sweep of the algorithm
-	
+
 	/* INITIALIZE VARIABLES */
 	
 	if (*verbose == 1) Rprintf("Initializing variables for MCMC. \n");
@@ -785,7 +785,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 	
 	if (*verbose == 1) Rprintf("Beginning MCMC. \n");
 	
-	for (iter = 0; iter < ( (*nsamp) * (maxmove) ); iter++)
+	for (iter = 0; iter < ( (long) (*nsamp) * (maxmove) ); iter++)
 	{
 		
 		zz = iter % (maxmove);		// Cyclical updates - can change this line to update different sets of parameters or change the order of updates
@@ -1128,14 +1128,12 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 		}
 
 		if (*verbose == 1)
-			if ( iter  >  ( (*nsamp) * (maxmove) * (percentcomplete) / 100 ) )
+			if ( ( ( ( (long) iter ) % ( (long) maxmove * (*nsamp) / 100 ) ) == 0 ) && ( iter > 0 ) )
 			{
 				curr_t = time(NULL);
-				Rprintf("%d of %d MCMC iterations complete (%d secs/%d iterations). \n", (percentcomplete * (*nsamp) / 100), (*nsamp) , (int) difftime(curr_t, last_t) , (int) ((iter - lastiter)/maxmove));
-				percentcomplete++;
-				lastiter = iter;
+				Rprintf("%d of %d MCMC iterations complete (%ld secs/%d iterations). \n", (iter / maxmove), (*nsamp) , (long) difftime(curr_t, last_t) , (int) ( (*nsamp) / 100 ) );
 				last_t = curr_t;
-			}		
+			}
 		
 		if (iter % ( (maxmove) * (*thinning) ) == 0)		
 		{  

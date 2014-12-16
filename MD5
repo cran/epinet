@@ -1,4 +1,4 @@
-5d22b42590b40d92d46f948f5e4a4050 *DESCRIPTION
+772ec9a86f5960e5ef80c19a81f25a1f *DESCRIPTION
 c56e4ee63aa0d6f4de6c6e8590c1d8ee *NAMESPACE
 dba5ccbf4ffa14a581a65a8e7bb85777 *R/BuildDyadicCovMatrix.R
 9bd1d788edec47a34b4d1d35370c1dda *R/BuildDyadicLinearERGM.R
@@ -16,7 +16,7 @@ be28e0012e1007ff72afb106244cfe2d *man/PlotEpiTree.Rd
 36167e57bfec46f35f0161956b5053ed *man/SEIR.simulator.Rd
 ea0c48e3de689ced84620d104afe90c9 *man/epinet-internal.Rd
 830b80aab98b10a8cbfc0650ae248f65 *man/ess.Rd
-fbba7594ae1b1ee1f5c49818fd5b81b2 *src/NetworkEpiMCMCSEIR.c
+03395b66d9c077b60ec0f813092f55eb *src/NetworkEpiMCMCSEIR.c
 613337b598ba9e075a0b5528e1664eb2 *src/NetworkEpiMCMCSEIR.h
 f0fccd2b9bf344dc0e7a38996194e3e0 *src/NetworkFunctions.c
 d756b96772ce4feb7e59c66d0a4ff3e4 *src/NetworkFunctions.h
