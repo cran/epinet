@@ -9,13 +9,13 @@
 \description{Plot the spread of an epidemic over a contact network.}
 
 \usage{plotepitree(epi, lwd = 1, leaf.labs = TRUE, leaf.cex = 0.75, 
-    zero.at.start = FALSE, main = "Spread of Epidemic", xlab = "Time", 
+    zero.at.start = FALSE, main = "Transmission Tree", xlab = "Time", 
     ylab= "", e.col = "black", i.col = "red", lty.transmission = 3, 
     marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...)
 
-plotepitreemcmc(mcmcoutput, index = lastiteration, lwd = 1, 
-    leaf.labs = TRUE, leaf.cex = 0.75, zero.at.start = FALSE, 
-    main = "Spread of Epidemic", xlab = "Time", ylab= "", 
+plotepitreemcmc(mcmcoutput, index = dim(mcmcoutput$transtree)[2], 
+    lwd = 1, leaf.labs = TRUE, leaf.cex = 0.75, zero.at.start = FALSE, 
+    main = "Transmission Tree", xlab = "Time", ylab= "", 
     e.col = "black", i.col = "red", lty.transmission = 3, 
     marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...)
 }
@@ -23,7 +23,7 @@ plotepitreemcmc(mcmcoutput, index = lastiteration, lwd = 1,
 \arguments{
 		\item{epi}{a simulated epidemic, in the form of the
 		    output produced by \code{\link{SEIR.simulator}}.}
-		\item{mcmcoutput}{output from \code{\link{epibayesmcmc}}.}
+		\item{mcmcoutput}{output from \code{\link{epinet}}.}
 		\item{index}{a number indicating which of the MCMC
 		    samples to plot. Defaults to the final sample in the chain.}
 		\item{lwd}{line width for the (horizontal) 
@@ -67,20 +67,25 @@ plotepitreemcmc(mcmcoutput, index = lastiteration, lwd = 1,
     transmission tree) and the times that each node entered 
     the Exposed, Infective, and Removed states.  The default 
     plotting parameter values work well for epidemics up to
-    about 50 - 60 infecteds and requires at least 2 infecteds.
+    about 50 - 60 infecteds and the function requires at least 
+    2 infecteds.  For a larger number of infecteds, it is 
+    recommended to use \code{\link[grDevices]{pdf}} and 
+    adjust plotting dimensions. 
     
     Only works for full data, i.e., the transmission tree must 
     be fully specified and all times for infected individuals
-    must be known.  Remove any records containing missing 
-    information prior to calling this function.}
+    must be known.}
 
 \value{ returns no value.  Strictly invoked for the plotting
 	side effect.
 }
 
 \seealso{\code{\link{SEIR.simulator}} for producing simulated
-    epidemics and \code{\link{epibayesmcmc}} for performing
+    epidemics and \code{\link{epinet}} for performing
     inference on the network and epidemic model parameters.
+    The functions \code{\link{epi2newick}} and 
+    \code{\link{write.epinet}} offer other options for outputting
+    inferred parameter samples and transmission trees.
 }
 
 \author{David Welch \email{david.welch@auckland.ac.nz}, 
@@ -89,24 +94,28 @@ plotepitreemcmc(mcmcoutput, index = lastiteration, lwd = 1,
 \examples{# Simulate an epidemic through a network of 30
 set.seed(3)
 N <- 30
-# Build dyadic covariate matrix
+# Build dyadic covariate matrix (X)
 # Have a single covariate for overall edge density; this is the Erdos-Renyi model
-nodecov <- matrix(1:N,nrow = N)
-dcm <- BuildDyadicCovMatrix(nodecov)
-# Build network and simulate epidemic over network
-examplenet <- BuildDyadicLinearERGM(N, dyadiccovmat=dcm, eta=-1.8)
+nodecov <- matrix(1:N, nrow = N)
+dcm <- BuildX(nodecov)
+# Simulate network and then simulate epidemic over network
+examplenet <- SimulateDyadicLinearERGM(N, dyadiccovmat = dcm, eta = -1.8)
 exampleepidemic <- SEIR.simulator(examplenet, N = 30, 
-    beta = 0.3, ki = 2, thetai = 5, latencydist="gamma")
+    beta = 0.3, ki = 2, thetai = 5, latencydist = "gamma")
 
 # Plot the simulated epidemic
 plotepitree(exampleepidemic)
 
+# Set inputs for MCMC algorithm
+mcmcinput <- MCMCcontrol(nsamp = 5000, thinning = 10, extrathinning = 10, 
+    etapropsd = 0.2) 
+priorcontrol <- priorcontrol(bprior = c(0, 1), tiprior = c(1, 3), teprior = c(1, 3), 
+    etaprior = c(0, 10), kiprior = c(2, 8), keprior = c(2, 8), priordists = "uniform")
 # Run MCMC algorithm on this epidemic
-# Note: Not enough data or iterations to do inference
-examplemcmc <- epibayesmcmc(exampleepidemic, nsamp = 5000, 
-    thinning = 10, bprior = c(0, 1), tiprior = c(1, 3), teprior = c(1, 3), etaprior = c(0, 10),
-    kiprior = c(2, 8), keprior = c(2, 8), etapropsd = 0.2, priordists = "uniform", 
-    extrathinning = 10, inferEtimes = TRUE, inferItimes = TRUE, verbose = FALSE)
+# Delete Exposure and Infection times; will infer these in the MCMC algorithm
+exampleepidemic[, 3:4] <- NA
+examplemcmc <- epinet( ~ 1, exampleepidemic, dcm, mcmcinput, priorcontrol,
+     verbose = FALSE)
 
 # Plot starting state of epidemic from chain 
 plotepitreemcmc(examplemcmc, index = 1)

@@ -171,7 +171,7 @@ interval of possible transition times for the node.  The proposal is
 used in a Hastings update step.
 *************************/
 
-double ProposedInftime(Vertex j, Vertex *transtree, double *exptimes, double *inftimes, double *rectimes, int m)
+double ProposedInftime(Vertex j, Vertex *transtree, double *exptimes, double *rectimes, int m)
 {
 	double mintime = exptimes[j], maxtime = rectimes[j];	/* Contruct the window of possible trans times */
 	
@@ -216,12 +216,13 @@ DrawParent
 
 Find the parent of a particular node (orig).  Sample from 
 all of the node's potential parents.  Uses a recursive algorithm.
+Tried using the distribution of the max order stat., but this
+method is actually slower due to the pow() function. 
 ******************************/
 
 void DrawParent(TreeNode *edges, Edge orig, Edge x, double *exptimes, double *inftimes, double *rectimes, double *maxrand, Vertex *currpar, int priorparentnode, int probmult)
 {
 	double posspar, temprand;
-	/* double expo; */
 	
 	if (x != 0) 
 	{
@@ -235,11 +236,6 @@ void DrawParent(TreeNode *edges, Edge orig, Edge x, double *exptimes, double *in
 					temprand = unif_rand();
 					posspar = MAX(posspar,temprand);
 				}
-				/* {
-				temprand = unif_rand();
-				expo = pow( temprand , ( 1.0 / (probmult - 1) ) ); 
-				posspar = MAX( posspar, expo );		// Can use the distribution of the max order stat. instead of actually drawing each uniform RV
-				} */									// Thought it may be more efficient, but it's actually slower, due to the "pow()" function
 				
 			if (posspar > *maxrand)		/* If no Vertices could possibly be the parent, then the parent  will stay at -999, which indicates that it's the initial infected */		
 			{
@@ -298,8 +294,6 @@ void DrawGraph(Network *nwp, Vertex *transtree, double *exptimes, double *inftim
 		latterinf = MAXINDEX(inftimes,i,j);		/* If the two times are equal, these macros will set priorinf to j and latterinf to i */
 		
 		pij = CalcEdgeProb(dyadcovindex, dyadcovs, eta, etapars, nwp->N); 		/* Calculate probability of edge between nodes i and j) */
-		
-		//if (unif_rand() < 0.001) Rprintf("i = %d, j = %d, pij = %f \n", i, j, pij);
 		
 		u = exp(-currbeta*(MAX(MIN(rectimes[priorinf], exptimes[latterinf])  - inftimes[priorinf] , 0)));	/* Construct the probability of an edge existing */
 		v = u*pij / (1 - pij + u*pij);
@@ -697,7 +691,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 	double *keprior, int *ninf, int *initN, double *initbeta, double *initthetai, double *initki, double *initthetae, double *initke, double *initeta,  int *bpriordist, 
 	int *tipriordist, int *tepriordist, int *kipriordist, int *kepriordist, int *etapriordist, double *etapropsd, int *accept, int *propose, double *allkd, double *abeta, double *athetai, double *aki, double *athetae, double *ake ,double *aeta, 
 	int *ainit, double *ainitexptime, double *aexptimes, double *ainftimes, int *atranstree, int *extrathinning, int *inferEtimes, int *inferItimes, int *parentprior, int *probparentmult,
-	int *verbose)
+	int *verbose, int *burnin, int *numsamp, int *numsamptimes)
 { 
 
 	GetRNGstate();  /* R function enabling uniform RNG */ 
@@ -732,7 +726,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 	double bwidth = (bprior[1] - bprior[0])/uniwidth, tiwidth = (tiprior[1] - tiprior[0])/uniwidth, tewidth = (teprior[1] - teprior[0])/uniwidth;
 	double kiwidth = (kiprior[1] - kiprior[0])/uniwidth, kewidth = (keprior[1] - keprior[0])/uniwidth;	// Variables used in case of uniform priors
 	int maxmove = 11;	// Sets the number of updates in each sweep of the algorithm
-
+    
 	/* INITIALIZE VARIABLES */
 	
 	if (*verbose == 1) Rprintf("Initializing variables for MCMC. \n");
@@ -777,18 +771,16 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 
 	CreateRandomDyadOrder(dyadindex1, dyadindex2, N);		/* Create random order to update dyads with updating the graph -- will use the same order throughout */
 	
-	DrawGraph(nwp, transtree, exptimes, inftimes, rectimes, currbeta, dyadcovs, dyadindex1, dyadindex2, eta, *etapars, &A);  /* Draw initial graph from its full conditional dist. */
-
-	last_t = time(NULL);
+	DrawGraph(nwp, transtree, exptimes, inftimes, rectimes, currbeta, dyadcovs, dyadindex1, dyadindex2, eta, *etapars, &A);  /* Draw initial graph from its full conditional dist. */	
 	
 	/* BEGIN MAIN MCMC LOOP */
 	
 	if (*verbose == 1) Rprintf("Beginning MCMC. \n");
 	
-	for (iter = 0; iter < ( (long) (*nsamp) * (maxmove) ); iter++)
+	for (iter = - ( (long) (*burnin) * (maxmove) ); iter < ( (long) (*nsamp) * (maxmove) ); iter++)
 	{
-		
-		zz = iter % (maxmove);		// Cyclical updates - can change this line to update different sets of parameters or change the order of updates
+		if (iter == 0) last_t = time(NULL); // Start clock after burn-in is complete
+		zz = labs(iter % (maxmove));		// Cyclical updates - can change this line to update different sets of parameters or change the order of updates
 		if (zz <= 7) propose[zz] ++;		// Not currently keeping track of propose / accept info for E/I times or Kappa
 		switch(zz)		/* Choose which item (parameter) to update */
 		{
@@ -801,8 +793,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 
 		case 1:	/* Update eta parameters */
 						
-			/* For right now, doing a block update on eta */
-			/* Will go back to update one-at-a-time and make more efficient later */
+			/* Doing a block update on eta */
 				
 			ok = 1;
 			for (i = 0; i < (*etapars); i++)	
@@ -988,7 +979,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 				ok = 1;
 				j = orderrand[i];	/* Update infection time for Vertex j */
 				
-				pinftimes[j] = ProposedInftime(j,transtree, exptimes, inftimes, rectimes, m);	/* Get proposed infection time for vertex j */
+				pinftimes[j] = ProposedInftime(j,transtree, exptimes, rectimes, m);	/* Get proposed infection time for vertex j */
 				if (IsTreeLegal(exptimes,pinftimes,rectimes,transtree,nwp,m) == 0) ok = 0;	/* If proposed time doesn't result in a legal tree, no need to calculate the rest of the likelihood */
 								
 				if (ok == 1) 		/* We've proposed a legal infection time, now check to see if we accept it */
@@ -1128,14 +1119,18 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 		}
 
 		if (*verbose == 1)
-			if ( ( ( ( (long) iter ) % ( (long) maxmove * (*nsamp) / 100 ) ) == 0 ) && ( iter > 0 ) )
+			if ( ( ( ( (long) iter ) % ( (long) maxmove * (*nsamp) / 100 ) ) == 0 ) && ( iter >= 0 ) )
 			{
 				curr_t = time(NULL);
-				Rprintf("%d of %d MCMC iterations complete (%ld secs/%d iterations). \n", (iter / maxmove), (*nsamp) , (long) difftime(curr_t, last_t) , (int) ( (*nsamp) / 100 ) );
+				if (iter == 0)
+				{
+					if (*burnin > 0) Rprintf("Burn-in complete. \n");	
+				}
+				else Rprintf("%d of %d MCMC iterations complete (%ld secs/%d iterations). \n", (iter / maxmove), (*nsamp) , (long) difftime(curr_t, last_t) , (int) ( (*nsamp) / 100 ) );
 				last_t = curr_t;
 			}
 		
-		if (iter % ( (maxmove) * (*thinning) ) == 0)		
+		if ( (iter % ( (maxmove) * (*thinning) ) == 0) && (iter >= 0) && (floor(iter / ( (maxmove) * (*thinning) ) ) < (*numsamp) ) )
 		{  
 			j = floor(iter / ( (maxmove) * (*thinning) ) );				/* 	Every thinning sweeps (updates of each parameter), record parameter values */
 			athetai[j] = currthetai;				/*	These are storage vectors that are initialized in R and passed (empty) into C	*/		
@@ -1146,16 +1141,16 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 			ainitexptime[j] = exptimes[initexp];
 			ainit[j] = initexp;
 			allkd[j] = (ok == 1) ? pllkd : llkd;
-
+            
 			for (i = 0; i < (*etapars); i++)
 				aeta[j*(*etapars)+i] = eta[i];						/* Record eta parameter values */
 						
 			R_CheckUserInterrupt();			/* Occasionally check for an R user interrupt */
 			
 			if (*extrathinning > 0)			/* Record exposure and infection time, as well as the transmission tree, if desired */
-				if  (j % (*extrathinning) == 0)				
+				if  ( (iter % ( (maxmove) * (*thinning) * (*extrathinning)) == 0) && (floor(iter / ( (maxmove) * (*thinning) * (*extrathinning)) ) < (*numsamptimes) ) )
 				{
-					j = floor(j / (*extrathinning) );
+					j = floor(iter / ( (maxmove) * (*thinning) * (*extrathinning)) );
 					for (i=1; i<=m; i++)
 					{
 						aexptimes[j*m+i - 1] = exptimes[i];

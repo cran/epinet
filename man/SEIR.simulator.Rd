@@ -34,7 +34,7 @@
 
 \details{Takes as input an undirected network, given in
 edgelist matrix format, which is the same format returned by
-\code{\link{BuildDyadicLinearERGM}}. Randomly chooses an initial infective
+\code{\link{SimulateDyadicLinearERGM}}. Randomly chooses an initial infective
 individual. The infection spreads randomly across edges in the 
 network according to exponential infective periods with mean \eqn{\frac{1}{beta}}{1 / beta}.
 An infective individual remains in the exposed state for a either
@@ -58,10 +58,10 @@ re-infected and cannot infect others.}
   those for the infected individuals.
 }
 
-\seealso{\code{\link{BuildDyadicLinearERGM}} for simulating an Erdos-Renyi
-    contact network, \code{\link{epibayesmcmc}} for performing
+\seealso{\code{\link{SimulateDyadicLinearERGM}} for simulating an Erdos-Renyi
+    contact network, \code{\link{epinet}} for performing
     inference on the network and epidemic model parameters,
-    and \code{\link{plotepitree}} for plotting functions.
+    and \code{\link{plotepitree}} and \code{\link{epi2newick}} for plotting functions.
 }
 
 
@@ -72,14 +72,14 @@ re-infected and cannot infect others.}
 \examples{# Simulate an epidemic through a network of 30
 set.seed(3)
 N <- 30
-# Build dyadic covariate matrix
+# Build dyadic covariate matrix (X)
 # Have a single covariate for overall edge density; this is the Erdos-Renyi model
 nodecov <- matrix(1:N,nrow = N)
-dcm <- BuildDyadicCovMatrix(nodecov)
-# Build network and simulate epidemic over network
-examplenet <- BuildDyadicLinearERGM(N, dyadiccovmat=dcm, eta=-1.8)
+dcm <- BuildX(nodecov)
+# Simulate network and then simulate epidemic over network
+examplenet <- SimulateDyadicLinearERGM(N, dyadiccovmat = dcm, eta = -1.8)
 exampleepidemic <- SEIR.simulator(examplenet, N = 30, 
-    beta = 0.3, ki = 2, thetai = 5, latencydist="gamma")
+    beta = 0.3, ki = 2, thetai = 5, latencydist = "gamma")
 }
 
 \keyword{graphs}

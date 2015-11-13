@@ -1,7 +1,16 @@
 
 useDynLib(epinet)
 
+# Suggested by devel win-builder check:
 importFrom(utils, packageDescription)
+importFrom("graphics", "lines", "plot", "text")
+importFrom("stats", "cor", "model.frame", "model.matrix", "rexp",
+             "rgamma", "runif")
+importFrom("utils", "combn", "write.table")
 
 # Export all names that do not begin with a dot.
 exportPattern("^[^\\.]")
+
+# Register S3 methods
+S3method(print, epinet)
+S3method(summary, epinet)

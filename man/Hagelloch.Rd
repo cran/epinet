@@ -27,7 +27,7 @@
     HagellochDyadCov is a matrix of dyadic covariates corresponding to
     the individuals in the Hagelloch data set.  Contains one row for each
     dyad (pair of individuals) in the population.  The first two columns are the
-    Node IDs for the two individuals in the dyad.  Third column is a column
+    Node IDs for the two individuals in the dyad.  The third column is a column
     of all 1 values, used as a baseline or intercept term.  Columns 4, 5, and 6
     are indicator variables for whether the two individuals in the dyad are in
     the same household, are both in classroom 1, or both in classroom 2,

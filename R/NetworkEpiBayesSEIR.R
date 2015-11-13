@@ -68,11 +68,11 @@ etimestartvalues <- function(epidata,initialoffset)
 # FUNCTION epibayesmcmc
 # R wrapper for C function that performs Bayesian MCMC inference
 
-epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, tiprior, 
+epibayesmcmc <- function(epidata, dyadiccovmat, nsamp, thinning, bprior, tiprior, 
     teprior, etaprior, kiprior, keprior, etapropsd, priordists = "gamma", betapriordist = priordists, 
     thetaipriordist = priordists, thetaepriordist = priordists, etapriordist = rep("normal", times=etapars), 
     kipriordist = priordists, kepriordist = priordists, extrathinning = FALSE, inferEtimes = FALSE, 
-    inferItimes = FALSE, parentprobmult = 1, verbose = TRUE)
+    inferItimes = FALSE, parentprobmult = 1, verbose = TRUE, burnin = 0)
 {		
 	
 	# Check overall input format
@@ -86,14 +86,6 @@ epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, 
 
 	# Do some processing on dyadic covariate matrix
 
-	# Create a default dyadic covariate matrix and determine if we are using the default matrix
-	
-	if (is.null(dyadiccovmat)) 
-	{
-		defaultmatrix <- TRUE
-		dyadiccovmat <- matrix(data=c(t(combn(N,2)),rep(1,times=choose(N,2))),byrow=FALSE,ncol=3,dimnames=list(NULL,c("Node ID 1","Node ID 2","Edges")))
-	} else defaultmatrix <- FALSE
-	
 	etapars <- dim(dyadiccovmat)[2] - 2
 	
 	if (length(etapropsd) != etapars) stop("Invalid input: length(etapropsd) must equal the number of eta parameters in the model")
@@ -136,7 +128,7 @@ epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, 
 				
 	if (verbose)
 	{
-		cat("epibayesmcmc run started at ",format(Sys.time(), "%Y-%m-%d %X"),"\n")
+		cat("epinet run started at ",format(Sys.time(), "%Y-%m-%d %X"),"\n")
 		cat("\n Initial parameter values \n")
 		cat("------------------------------ \n")
 		cat("Beta = ",initbeta,"\n")
@@ -198,7 +190,11 @@ epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, 
 	#	Note: if we are not inferring the E/I times, then we just return NULL for these values
 	#	There are generally too many times to return each iteration (we run out of space)
 	#	So instead, if we want to return these, we use the variable "extrathinning" as the extra thinning interval
-	
+
+    numsamp <- floor(nsamp/thinning)
+    if (extrathinning > 0) numsamptimes <- floor(nsamp/(thinning*extrathinning)) else numsamptimes <- NULL
+	#cat(numsamp, " ", numsamptimes, "\n")
+
 	if (extrathinning == 0)
 	{
 		storeexptimes <- NULL
@@ -206,11 +202,13 @@ epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, 
 		storetranstree <- NULL
 	} else
 	{
-		storeexptimes <- array(0,ninf*nsamp/(thinning*extrathinning))
-		storeinftimes <- array(0,ninf*nsamp/(thinning*extrathinning))
-		storetranstree <- array(0,ninf*nsamp/(thinning*extrathinning))
+		storeexptimes <- array(0,ninf*numsamptimes)
+		storeinftimes <- array(0,ninf*numsamptimes)
+		storetranstree <- array(0,ninf*numsamptimes)
+	#cat(dim(storeexptimes))
 	}
-		
+    
+    
 	# (5) Do translation (renaming) of nodes and probable parent info
 	epidata[,1:2] <- floor(epidata[,1:2])
 	
@@ -239,8 +237,7 @@ epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, 
 			parentprior[i] <- which(epidata[(1:ninf),1] == epidata[i,2])		
 			
 	# (5e) Re-sort dyadic covariates
-	if(!defaultmatrix)
-	{
+
 	counter <- 1	
 	sorteddyadiccovmat <- matrix(ncol=etapars,nrow=N*(N-1)/2)
 
@@ -274,13 +271,6 @@ epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, 
 	{
 		if (changed) cat("Re-sorted dyadic covariates.\n")
 			else cat("Dyadic covariates not re-sorted.\n")
-	}
-	
-	} else sorteddyadiccovmat <- dyadiccovmat[,-(1:2)]
-
-	
-	if (verbose)
-	{
 		cat("Coefficient names: \n")
 		for (i in 1:etapars)
 			cat("eta", i-1, ": ", etanames[i], "\n")
@@ -288,25 +278,25 @@ epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, 
 	}
 
 	# Call C function to do actual MCMC routine
-	
-	output <- .C("epigraphmcmcc",as.double(epidata[,3]),as.double(epidata[,4]), as.double(epidata[,5]), as.integer(etapars), 
+    
+	output <- .C("epigraphmcmcc",as.double(epidata[,3]),as.double(epidata[,4]), as.double(epidata[,5]), as.integer(etapars),
 		as.double(sorteddyadiccovmat), as.integer(nsamp), as.integer(thinning),as.double(bprior), as.double(tiprior), as.double(teprior), as.double(etaprior), 
 		as.double(kiprior), as.double(keprior), as.integer(ninf), as.integer(N), as.double(initbeta),as.double(initthetai), as.double(initki), as.double(initthetae), 
 		as.double(initke), as.double(initeta), as.integer(bpriordistnum), as.integer(tipriordistnum), as.integer(tepriordistnum), as.integer(kipriordistnum), 
 		as.integer(kepriordistnum) ,as.integer(etapriordistnum), as.double(etapropsd), accept=as.integer(array(0,maxmove-3)), propose=as.integer(array(0,maxmove-3)), 
-		llkd = as.double(array(0,nsamp/thinning)), betaout = as.double(array(0,nsamp/thinning)), 
-		thetaiout=as.double(array(0,nsamp/thinning)), kiout=as.double(array(0,nsamp/thinning)), thetaeout=as.double(array(0,nsamp/thinning)), 
-		keout=as.double(array(0,nsamp/thinning)), eta=as.double(array(0,(nsamp/thinning)*etapars)), initexp=as.integer(array(0,nsamp/thinning)), 
-		initexptime=as.double(array(0,nsamp/thinning)), exptimes = as.double(storeexptimes), inftimes = as.double(storeinftimes), 
+		llkd = as.double(array(0,numsamp)), betaout = as.double(array(0,numsamp)),
+		thetaiout=as.double(array(0,numsamp)), kiout=as.double(array(0,numsamp)), thetaeout=as.double(array(0,numsamp)),
+		keout=as.double(array(0,numsamp)), eta=as.double(array(0,numsamp*etapars)), initexp=as.integer(array(0,numsamp)),
+		initexptime=as.double(array(0,numsamp)), exptimes = as.double(storeexptimes), inftimes = as.double(storeinftimes),
 		transtree = as.integer(storetranstree), as.integer(extrathinning), as.integer(1*inferEtimes), as.integer(1*inferItimes), as.integer(parentprior), 
-		as.integer(parentprobmult), as.integer(1*verbose)
-	, PACKAGE="epinet"
+		as.integer(parentprobmult), as.integer(1*verbose), as.integer(burnin), as.integer(numsamp), as.integer(numsamptimes)
+        #	, PACKAGE="epinet"
 	)
 	
 	# Post-processing	
 	
 	# Arrange eta into an array, with the samples for each group corresponding to one column
-	etaout <- aperm(array(output$eta,dim=c(etapars,nsamp/thinning)))
+	etaout <- aperm(array(output$eta,dim=c(etapars,numsamp)))
 	dimnames(etaout) <- list(NULL,covariates=etanames)
 	
 	# Reverse translate nodes for initinf (back to original node IDs)
@@ -319,11 +309,11 @@ epibayesmcmc <- function(epidata, dyadiccovmat = NULL, nsamp, thinning, bprior, 
 		transtreeout <- NULL
 	} else
 	{
-		expout <- array(output$exptimes,dim=c(ninf,nsamp/(thinning*extrathinning)))
-		infout <- array(output$inftimes,dim=c(ninf,nsamp/(thinning*extrathinning)))
+		expout <- array(output$exptimes,dim=c(ninf,numsamptimes))
+		infout <- array(output$inftimes,dim=c(ninf,numsamptimes))
 		# Back translate transmission tree to their original node IDs
 		output$transtree[output$transtree == -999] <- NA
-		transtreeout <- array(epidata[output$transtree,1],dim=c(ninf,nsamp/(thinning*extrathinning)))		
+		transtreeout <- array(epidata[output$transtree,1],dim=c(ninf,numsamptimes))
 	}		
 	
 	return(list(accept=output$accept,propose=output$propose,llkd=output$llkd, beta=output$betaout,thetai=output$thetaiout,thetae=output$thetaeout,ki=output$kiout,

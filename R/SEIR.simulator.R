@@ -4,21 +4,17 @@ SEIR.simulator <- function(M, N, beta, ki, thetai, ke = ki, thetae = thetai, lat
   
   # First do some input format checking
 
-  # The line of code below converts a "network object" (as defined in the 
-  # network package) to edgelist format.  This might be useful in some cases, 
-  # but would require the package "epinet" to depend on the package 
-  # "network", so it's not clear that it's worth it -- at least currently.
-  
-  #if(is.network(M)) M <- as.matrix.network(M,matrix.type="edgelist")
-
-  # M should be an edgelist matrix
-  if(!is.matrix(M))
+  if (!is.null(M))
+	{
+    # M should be an edgelist matrix
+    if(!is.matrix(M))
   	stop("Input error: Network M must be an edgelist matrix.")
 	
-  # Make sure M has the correct dimensions
-  if ( (length(dim(M)) != 2) || (dim(M)[2] != 2) )
-	stop("Input error: Network M must an a 2-dimensional edgelist matrix.")
-  
+    # Make sure M has the correct dimensions
+    if ( (length(dim(M)) != 2) || (dim(M)[2] != 2) )
+	  stop("Input error: Network M must an a 2-dimensional edgelist matrix.")
+	}
+	
   # Begin actual simulator
 	
   init <- sample(1:N,1)  # Inital infected individual is chosen at random

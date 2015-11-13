@@ -43,7 +43,7 @@ Network InitializeNetworkFromTree(Vertex *transtree, int m, Vertex N);
 Vertex ProposedInitExp(Vertex initexp, Vertex *transtree, int m);	/* Generate proposed identity of initial exposed */
 double ProposedInitialExptime(Vertex init, double *inftimes, double delta); /* Generate proposed exposure time for initial exposed */
 double ProposedExptime(Vertex j,Vertex *transtree,double *inftimes); /* Generate proposed exposure time for infecteds other than the initial exposed */
-double ProposedInftime(Vertex j, Vertex *transtree, double *exptimes, double *inftimes, double *rectimes, int m);	/* Generate proposed transition time for one individual */
+double ProposedInftime(Vertex j, Vertex *transtree, double *exptimes, double *rectimes, int m);	/* Generate proposed transition time for one individual */
 void DrawTransTree(Vertex *transtree, Network *nwp, double *exptimes, double *inftimes, double *rectimes, int m, int *probparentprior, int *probparentmult); /* Sample a transmission tree (P) from its full conditional */
 void DrawParent(TreeNode *edges, Edge orig, Edge x, double *exptimes, double *inftimes, double *rectimes, double *maxrand, Vertex *currpar, int priorparentnode, int probmult);
 double CalcEdgeProb(int dyadcovindex, double *dyadcovs, double *eta, int etapars, int N);
@@ -71,6 +71,6 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 	double *keprior, int *ninf, int *initN, double *initbeta, double *initthetai, double *initki, double *initthetae, double *initke, double *initeta,  int *bpriordist, 
 	int *tipriordist, int *tepriordist, int *kipriordist, int *kepriordist, int *etapriordist, double *etapropsd, int *accept, int *propose, double *allkd, double *abeta, double *athetai, double *aki, double *athetae, double *ake ,double *aeta, 
 	int *ainit, double *ainitexptime, double *aexptimes, double *ainftimes, int *atranstree, int *extrathinning, int *inferEtimes, int *inferItimes, int *parentprior, int *probparentmult,
-	int *verbose); 
+	int *verbose, int *burnin, int *numsamp, int *numsamptimes);
 
 #endif

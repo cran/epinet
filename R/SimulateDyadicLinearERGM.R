@@ -1,6 +1,6 @@
 
 
-BuildDyadicLinearERGM <- function(N, dyadiccovmat, eta)
+SimulateDyadicLinearERGM <- function(N, dyadiccovmat, eta)
 {
 
 	# Note: Only performing an error check on the number of rows and columns

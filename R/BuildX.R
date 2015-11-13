@@ -1,25 +1,25 @@
 #######################
-# Function  BuildDyadicCovMatrix
+# Function  BuildX
 #   Inputs: 
-#			nodecov, an N x k matrix where each row represent and individual, column 1 is the id and the reamining (k-1) columns are covariate values for the node
+#			nodecov, an N x k matrix where each row represent and individual, column 1 is the id and the remaining (k-1) columns are covariate values for the node
 #			unaryCol, an array of column indices
-#			unaryFunc, an array of same length as unaryCol containing methods for comapring dyads.  Each entry can take values in: "match", "absdiff"
+#			unaryFunc, an array of same length as unaryCol containing methods for comparing dyads.  Each entry can take values in: "match", "absdiff"
 #			binaryCol, a list of 2 element arrays of column indices
 #			binaryFunc, an array of same length as binaryCol containing methods for comparing dyads.  Each entry can take values in: "euclidean", "manhattan"
-#			includeEdgeCol a logical value.  If TRUE, includes a column of all ones.  Defaults to TRUE
+#			includeIntercept a logical value.  If TRUE, includes a column of all ones.  Defaults to TRUE
 #   Outputs:
 #			a dyadic covariate matrix with (N choose 2) rows, columns 1 and 2 are node ids, column 3 is all ones (if requested) and then one column for each given element of unaryCol and binaryCol.  
 #			Builds colnames depending on type of unaryFunc and binaryFunc and colnames of nodecov
 # example:
 # 			mycov = data.frame(id = 1:5,xpos = rnorm(5),ypos = rnorm(5),house = c(1,1,2,2,2),gender = c(0,0,0,1,1))
-# 			dyadCov = BuildDyadicCovMatrix(mycov,unaryCol = c(4,5),unaryFunc = c("match","match"),binaryCol = list(c(2,3)),binaryFunc = c("euclidean"))
+# 			dyadCov = BuildX(mycov,unaryCol = c(4,5),unaryFunc = c("match","match"),binaryCol = list(c(2,3)),binaryFunc = c("euclidean"))
 ########################
 
 
-BuildDyadicCovMatrix <- function(nodecov,unaryCol = NULL,unaryFunc = NULL, binaryCol = NULL,binaryFunc = NULL,includeEdgeCol = TRUE){
+BuildX <- function(nodecov,unaryCol = NULL,unaryFunc = NULL, binaryCol = NULL,binaryFunc = NULL,includeIntercept = TRUE){
 	# check there at least one column
-	if (!(includeEdgeCol | (length(unaryCol)>0) | (length(binaryCol)>0) )) {
-		stop("need to have at least one column in Dyadic Covriate Matrix (either includeEdgeCol must be true or one of unaryCol or binaryCol must be non-empty)")
+	if (!(includeIntercept | (length(unaryCol)>0) | (length(binaryCol)>0) )) {
+		stop("need to have at least one column in X Matrix (either includeIntercept must be true or one of unaryCol or binaryCol must be non-empty)")
 	}
 	
 	# check vector lengths match up
@@ -34,7 +34,7 @@ BuildDyadicCovMatrix <- function(nodecov,unaryCol = NULL,unaryFunc = NULL, binar
 	n = nrow(nodecov)
 	covname = colnames(nodecov)
 	# ncol is number of columns in final matrix
-	ncol = 2 + includeEdgeCol + length(unaryCol) + length(binaryCol)
+	ncol = 2 + includeIntercept + length(unaryCol) + length(binaryCol)
 	
 	# initialise final matrix
 	dyadmat = matrix(0,nrow = n/2 *(n-1),ncol = ncol)
@@ -44,12 +44,12 @@ BuildDyadicCovMatrix <- function(nodecov,unaryCol = NULL,unaryFunc = NULL, binar
 	dyadmat[,1:2] = t(combn(nodecov[,1],2))
 	colname[1:2] = c("node.1","node.2")
 	
-	#keep track of how many columns we've filled
+	#keep track of how many columns filled
 	completedCol = 2
 	
-	if (includeEdgeCol){
+	if (includeIntercept){
 		dyadmat[,3] = 1
-		colname[3] = "Edge"
+		colname[3] = "(Intercept)"
 		completedCol = 3
 	}
 	

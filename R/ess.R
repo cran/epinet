@@ -10,7 +10,7 @@
 # 			ess(runif(100))  ## returns a number close to 100
 ########################
 
-ess <- function(x, ignoreBurnin = TRUE, burninProportion = 0.1){
+ess <- function(x, ignoreBurnin = FALSE, burninProportion = 0.1){
 	if (ignoreBurnin){
 		# discard first part of x, according to burninProportion
 		if (burninProportion <= 0 || burninProportion >= 1) stop("burninProportion should be in (0,1)")

@@ -4,6 +4,9 @@
 \alias{itimestartvalues}
 \alias{etimestartvalues}
 \alias{CreateCompactMatrix}
+\alias{removesusceptibles}
+\alias{buildepifromoutput}
+\alias{epi2newick.int}
 \description{
   Internal epinet functions.
 }
