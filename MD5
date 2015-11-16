@@ -1,4 +1,4 @@
-e53543b92e5239a3b331aac8083486b4 *DESCRIPTION
+dcca7b8d6ec82274d49f09feae6a683e *DESCRIPTION
 21473bb04837658ddb16cc4ef8c0e510 *NAMESPACE
 771b466cba985d4b510a65721e7ca922 *R/BuildX.R
 2162375c8e01e4628098fecd1fd745a5 *R/Epinet.R
@@ -17,12 +17,12 @@ cbb3ff4ecb2d51f0d7978c42dfc10ea2 *man/PlotEpiTree.Rd
 45ec9a6c7d94632c388f05f42cb3d58a *man/Priorcontrol.Rd
 bb507728580242bda397110a4c8141a5 *man/SEIR.simulator.Rd
 33f51b12b98c71e90f99c14083c4427d *man/SimulateDyadicLinearERGM.Rd
-6f31d6a3d3fd6e2483da56341a70ee5a *man/epi2newick.Rd
+62e700030690e7d94171811172cb51f0 *man/epi2newick.Rd
 18bb484c45d5c833be3b3dd556b80868 *man/epinet-internal.Rd
 83e0c824acdad5703f6f490781047f7d *man/ess.Rd
 820ebe9000703bdf1c7c65240fde9288 *man/print.epinet.Rd
 3a4784c4293334a78ddc0f5a3962fa3d *man/summary.epinet.Rd
-0cd6cbdb96adbd7cd033154b2e038e8c *man/write.epinet.Rd
+5d1dec66597e547102a2eef03599f459 *man/write.epinet.Rd
 f4f6c4c5acaf5207d223c9c41d7c26af *src/NetworkEpiMCMCSEIR.c
 966581fe98d7cf697721f550a377587f *src/NetworkEpiMCMCSEIR.h
 f0fccd2b9bf344dc0e7a38996194e3e0 *src/NetworkFunctions.c

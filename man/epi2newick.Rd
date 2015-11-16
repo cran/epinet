@@ -35,7 +35,7 @@ Converts the epinet epidemic format into a transmssion tree represented as a New
     \code{\link{plotepitreemcmc}} for plotting the posterior samples of the transmission tree.} 
 
 \references{
-Rambaut A. 2014. FigTree v1.4. \url{tree.bio.ed.ac.uk/software/figtree/}.
+Rambaut A. 2014. FigTree v1.4. \url{http://tree.bio.ed.ac.uk/software/figtree/}.
 Vaughan T. 2015. IcyTree \url{http://tgvaughan.github.io/icytree/icytree.html}.
 }
 
