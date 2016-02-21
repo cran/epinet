@@ -21,7 +21,7 @@ BuildX <- function(nodecov,unaryCol = NULL,unaryFunc = NULL, binaryCol = NULL,bi
 	if (!(includeIntercept | (length(unaryCol)>0) | (length(binaryCol)>0) )) {
 		stop("need to have at least one column in X Matrix (either includeIntercept must be true or one of unaryCol or binaryCol must be non-empty)")
 	}
-	
+  
 	# check vector lengths match up
 	if (length(unaryCol) != length(unaryFunc)){
 		stop("unaryCol and unaryFunc must have same length")
@@ -30,6 +30,20 @@ BuildX <- function(nodecov,unaryCol = NULL,unaryFunc = NULL, binaryCol = NULL,bi
 		stop("binaryCol and binaryFunc must have same length")
 	}
 	
+  # helper function
+  comb2 <- function(x){
+    ## given x with length(x)=n, returns array with n choose 2 rows and 2 columns giving all possible pairs of x
+    ## faster version of combn(x,2)
+    n  = length(x)
+    k = n * (n-1) / 2
+    y = array(rep(1:(n-1), (n-1):1), dim = c(k,2))
+    for (i in 1:(n-1)) {
+      z = k - ((n-i+1)*(n-i)/2)
+      y[(z + 1):(z + n - i),2] =  (i+1):n
+    }
+    return(array(x[y], dim = c(n*(n-1)/2, 2)))
+  }
+  
 	# n is number of nodes
 	n = nrow(nodecov)
 	covname = colnames(nodecov)
@@ -41,7 +55,8 @@ BuildX <- function(nodecov,unaryCol = NULL,unaryFunc = NULL, binaryCol = NULL,bi
 	colname = as.character(1:ncol)
 	
 	# make all dyads
-	dyadmat[,1:2] = t(combn(nodecov[,1],2))
+	# dyadmat[,1:2] = t(combn(nodecov[,1],2))
+	dyadmat[,1:2] = comb2(nodecov[,1])
 	colname[1:2] = c("node.1","node.2")
 	
 	#keep track of how many columns filled

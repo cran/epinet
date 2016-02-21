@@ -87,7 +87,7 @@ Uses an algorithm similar to that described in Groendyke et al. (2010) and Britt
     \code{\link{MCMCcontrol}} for specifying control parameters for the MCMC algorithm,
     \code{\link{priorcontrol}} for specifying prior distributions and their hyperparameters, 
     \code{\link{epi2newick}} and \code{\link{write.epinet}} for writing the output of the algorithm
-    to file, and \code{\link{plotepitreemcmc}} for plotting the posterior samples of the transmission 
+    to file, and \code{\link{plot.epinet}} for plotting the posterior samples of the transmission
     tree.} 
 
 \references{

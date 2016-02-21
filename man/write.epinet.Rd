@@ -32,7 +32,7 @@ is a .trees file, containing the inferred transmission trees, output in Newick f
 	\code{\link{print.epinet}} and \code{\link{summary.epinet}} for printing basic
 	summary information about an epinet object, \code{\link{epi2newickmcmc}} for
 	printing an inferred transmission tree to the screen in Newick format, and
-    \code{\link{plotepitreemcmc}} for plotting the posterior samples of the transmission tree.} 
+    \code{\link{plot.epinet}} for plotting the posterior samples of the transmission tree.}
 
 \references{
 Rambaut A., Suchard M., Xie D., Drummond A.J. 2014. Tracer v1.6. \url{http://beast.bio.ed.ac.uk/Tracer}.

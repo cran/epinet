@@ -61,7 +61,7 @@ re-infected and cannot infect others.}
 \seealso{\code{\link{SimulateDyadicLinearERGM}} for simulating an Erdos-Renyi
     contact network, \code{\link{epinet}} for performing
     inference on the network and epidemic model parameters,
-    and \code{\link{plotepitree}} and \code{\link{epi2newick}} for plotting functions.
+    and \code{\link{plot.epidemic}} and \code{\link{epi2newick}} for plotting functions.
 }
 
 

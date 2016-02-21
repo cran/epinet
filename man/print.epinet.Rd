@@ -27,7 +27,7 @@ parameters in the model, and number of iterations of the MCMC algorithm.
 \value{ Strictly invoked for side effect.}
 
 \seealso{\code{\link{epinet}} for generating posterior samples of the parameters, and
-    \code{\link{plotepitreemcmc}} for plotting the posterior samples of the transmission tree.} 
+    \code{\link{plot.epinet}} for plotting the posterior samples of the transmission tree.}
 
 \author{ Chris Groendyke \email{cgroendyke@gmail.com},
     David Welch \email{david.welch@auckland.ac.nz} }

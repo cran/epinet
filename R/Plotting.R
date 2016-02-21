@@ -67,18 +67,18 @@ plotepitree <- function(epi, lwd = 1, leaf.labs = TRUE, leaf.cex = 0.75,
 }
 
 	
-plotepitreemcmc <- function(mcmcoutput, index = dim(mcmcoutput$transtree)[2], lwd = 1,
-	leaf.labs = TRUE, leaf.cex = 0.75, zero.at.start = FALSE, main = "Transmission Tree", 
-	xlab = "Time", ylab= "", e.col = "black", i.col = "red", lty.transmission = 3, 
-	marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...) {
+#plotepitreemcmc <- function(mcmcoutput, index = dim(mcmcoutput$transtree)[2], lwd = 1,
+#	leaf.labs = TRUE, leaf.cex = 0.75, zero.at.start = FALSE, main = "Transmission Tree",
+#	xlab = "Time", ylab= "", e.col = "black", i.col = "red", lty.transmission = 3,
+#	marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...) {
 
-    epi <- buildepifromoutput(mcmcoutput, index)
+#   epi <- buildepifromoutput(mcmcoutput, index)
 		
-	plotepitree(epi, lwd = lwd, leaf.labs = leaf.labs, leaf.cex = leaf.cex, 
-		zero.at.start = zero.at.start, main = main, xlab = xlab, ylab= ylab, e.col = e.col, 
-		i.col = i.col, lty.transmission = lty.transmission, marktransitions = marktransitions, 
-		label.trans = label.trans, cex.trans = cex.trans, ...)
-}
+#	plotepitree(epi, lwd = lwd, leaf.labs = leaf.labs, leaf.cex = leaf.cex,
+#		zero.at.start = zero.at.start, main = main, xlab = xlab, ylab= ylab, e.col = e.col,
+#		i.col = i.col, lty.transmission = lty.transmission, marktransitions = marktransitions,
+#		label.trans = label.trans, cex.trans = cex.trans, ...)
+#}
 
 epi2newickmcmc <- function(mcmcoutput, index = dim(mcmcoutput$transtree)[2]) {
   epi <- buildepifromoutput(mcmcoutput, index)

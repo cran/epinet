@@ -14,3 +14,7 @@ exportPattern("^[^\\.]")
 # Register S3 methods
 S3method(print, epinet)
 S3method(summary, epinet)
+S3method(plot, epinet)
+S3method(print, epidemic)
+S3method(summary, epidemic)
+S3method(plot, epidemic)

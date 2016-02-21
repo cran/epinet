@@ -1,32 +1,22 @@
 
 
-\name{PlotEpiTree}
-\alias{plotepitree}
-\alias{plotepitreemcmc}
+\name{plot.epidemic}
+\alias{plot.epidemic}
 
 \title{Plot the spread of an epidemic}
 
 \description{Plot the spread of an epidemic over a contact network.}
 
-\usage{plotepitree(epi, lwd = 1, leaf.labs = TRUE, leaf.cex = 0.75, 
+\usage{\method{plot}{epidemic}(x, lwd = 1, leaf.labs = TRUE, leaf.cex = 0.75,
     zero.at.start = FALSE, main = "Transmission Tree", xlab = "Time", 
     ylab= "", e.col = "black", i.col = "red", lty.transmission = 3, 
-    marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...)
-
-plotepitreemcmc(mcmcoutput, index = dim(mcmcoutput$transtree)[2], 
-    lwd = 1, leaf.labs = TRUE, leaf.cex = 0.75, zero.at.start = FALSE, 
-    main = "Transmission Tree", xlab = "Time", ylab= "", 
-    e.col = "black", i.col = "red", lty.transmission = 3, 
     marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...)
 }
 
 \arguments{
-		\item{epi}{a simulated epidemic, in the form of the
+		\item{x}{a simulated epidemic, in the form of the
 		    output produced by \code{\link{SEIR.simulator}}.}
-		\item{mcmcoutput}{output from \code{\link{epinet}}.}
-		\item{index}{a number indicating which of the MCMC
-		    samples to plot. Defaults to the final sample in the chain.}
-		\item{lwd}{line width for the (horizontal) 
+		\item{lwd}{line width for the (horizontal)
 		    line segments representing the exposed and infective 
 		    periods for each individual.  Also controls the line width 
 		    for the (vertical) line segments showing the transmission
@@ -60,9 +50,7 @@ plotepitreemcmc(mcmcoutput, index = dim(mcmcoutput$transtree)[2],
 		    call to plot() that draws the axes and titles.}
 }
 
-\details{Takes as input either a simulated epidemic, or 
-    the output from an MCMC output (which itself may 
-    infer the epidemic times) and plots them, indicating the 
+\details{Plots a simulated epidemic, or indicating the
     path that the infection took during the epidemic (the 
     transmission tree) and the times that each node entered 
     the Exposed, Infective, and Removed states.  The default 
@@ -81,14 +69,12 @@ plotepitreemcmc(mcmcoutput, index = dim(mcmcoutput$transtree)[2],
 }
 
 \seealso{\code{\link{SEIR.simulator}} for producing simulated
-    epidemics and \code{\link{epinet}} for performing
-    inference on the network and epidemic model parameters.
-    The functions \code{\link{epi2newick}} and 
-    \code{\link{write.epinet}} offer other options for outputting
-    inferred parameter samples and transmission trees.
+epidemics.  \code{\link{plot.epinet}} produces similar plots
+for transmission trees inferred as part of the \code{\link{epinet}}
+inference routine.
 }
 
-\author{David Welch \email{david.welch@auckland.ac.nz}, 
+\author{David Welch \email{david.welch@auckland.ac.nz},
     Chris Groendyke \email{cgroendyke@gmail.com}}
 
 \examples{# Simulate an epidemic through a network of 30
@@ -104,24 +90,7 @@ exampleepidemic <- SEIR.simulator(examplenet, N = 30,
     beta = 0.3, ki = 2, thetai = 5, latencydist = "gamma")
 
 # Plot the simulated epidemic
-plotepitree(exampleepidemic)
-
-# Set inputs for MCMC algorithm
-mcmcinput <- MCMCcontrol(nsamp = 5000, thinning = 10, extrathinning = 10, 
-    etapropsd = 0.2) 
-priorcontrol <- priorcontrol(bprior = c(0, 1), tiprior = c(1, 3), teprior = c(1, 3), 
-    etaprior = c(0, 10), kiprior = c(2, 8), keprior = c(2, 8), priordists = "uniform")
-# Run MCMC algorithm on this epidemic
-# Delete Exposure and Infection times; will infer these in the MCMC algorithm
-exampleepidemic[, 3:4] <- NA
-examplemcmc <- epinet( ~ 1, exampleepidemic, dcm, mcmcinput, priorcontrol,
-     verbose = FALSE)
-
-# Plot starting state of epidemic from chain 
-plotepitreemcmc(examplemcmc, index = 1)
-
-# Plot final state of epidemic from chain 
-plotepitreemcmc(examplemcmc)
+plot(exampleepidemic)
 }
 
 \keyword{graphs}

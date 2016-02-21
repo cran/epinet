@@ -32,7 +32,7 @@ Converts the epinet epidemic format into a transmssion tree represented as a New
 	\code{\link{print.epinet}} and \code{\link{summary.epinet}} for printing basic
 	summary information about an epinet object, \code{\link{write.epinet}} for
 	writing parameter and transmission tree posterior samples to file, and
-    \code{\link{plotepitreemcmc}} for plotting the posterior samples of the transmission tree.} 
+    \code{\link{plot.epinet}} for plotting the posterior samples of the transmission tree.}
 
 \references{
 Rambaut A. 2014. FigTree v1.4. \url{http://tree.bio.ed.ac.uk/software/figtree/}.

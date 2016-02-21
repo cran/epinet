@@ -7,6 +7,7 @@
 \alias{removesusceptibles}
 \alias{buildepifromoutput}
 \alias{epi2newick.int}
+\alias{plotepitree}
 \description{
   Internal epinet functions.
 }

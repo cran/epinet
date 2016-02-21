@@ -88,7 +88,7 @@ print.epinet <- function(x, ...)
 }
 
 # FUNCTION summary.epinet
-# Summay method for class epinet
+# Summary method for class epinet
 
 summary.epinet <- function(object, ...)
 {
@@ -98,3 +98,20 @@ summary.epinet <- function(object, ...)
 	print(summary(object$eta))
 }
 
+# FUNCTION plot.epinet
+# Plot method for class epinet
+
+plot.epinet <- function(x, index = dim(x$transtree)[2], lwd = 1,
+leaf.labs = TRUE, leaf.cex = 0.75, zero.at.start = FALSE, main = "Transmission Tree",
+xlab = "Time", ylab= "", e.col = "black", i.col = "red", lty.transmission = 3,
+marktransitions = TRUE, label.trans = "|", cex.trans = 0.5, ...) {
+    
+    if(is.null(x$transtree) || is.null(index)) stop("Error: No inferred transmission tree samples found to plot.")
+    
+    epi <- buildepifromoutput(x, index)
+    
+    plotepitree(epi, lwd = lwd, leaf.labs = leaf.labs, leaf.cex = leaf.cex,
+    zero.at.start = zero.at.start, main = main, xlab = xlab, ylab= ylab, e.col = e.col,
+    i.col = i.col, lty.transmission = lty.transmission, marktransitions = marktransitions,
+    label.trans = label.trans, cex.trans = cex.trans, ...)
+}
