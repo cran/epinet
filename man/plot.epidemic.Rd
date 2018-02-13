@@ -74,6 +74,9 @@ for transmission trees inferred as part of the \code{\link{epinet}}
 inference routine.
 }
 
+\references{
+Groendyke, C. and Welch, D.  2018.  epinet: An R Package to Analyze Epidemics Spread across Contact Networks, \emph{Journal of Statistical Software}, \bold{83-11}.	}
+
 \author{David Welch \email{david.welch@auckland.ac.nz},
     Chris Groendyke \email{cgroendyke@gmail.com}}
 

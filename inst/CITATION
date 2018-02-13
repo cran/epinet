@@ -1,0 +1,18 @@
+bibentry(bibtype = "Article",
+  title        = "{epinet}: An {R} Package to Analyze Epidemics Spread across Contact Networks",
+  author       = c(person(given = "Chris",
+                          family = "Groendyke",
+                          email = "groendyke@rmu.edu"),
+                   person(given = "David",
+                          family = "Welch",
+                          email = "david.welch@auckland.ac.nz")),
+  journal      = "Journal of Statistical Software",
+  year         = "2018",
+  volume       = "83",
+  number       = "11",
+  pages        = "1--22",
+  doi          = "10.18637/jss.v083.i11",
+
+  header       = "To cite epinet in publications use:"
+)
+

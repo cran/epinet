@@ -35,7 +35,7 @@ is a .trees file, containing the inferred transmission trees, output in Newick f
     \code{\link{plot.epinet}} for plotting the posterior samples of the transmission tree.}
 
 \references{
-Rambaut A., Suchard M., Xie D., Drummond A.J. 2014. Tracer v1.6. \url{http://beast.bio.ed.ac.uk/Tracer}.
+Rambaut A., Suchard M., Xie D., Drummond A.J. 2014. Tracer v1.6. \url{http://beast.community/tracer.html}.
 }
 
 \author{ David Welch \email{david.welch@auckland.ac.nz},

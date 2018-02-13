@@ -30,6 +30,9 @@ Prints the epidemic inference object, including the exposure, infectious, and re
 for the summary method of an epidemic object, and \code{\link{plot.epidemic}} for plotting a
 visual display of the epidemic.}
 
+\references{
+Groendyke, C. and Welch, D.  2018.  epinet: An R Package to Analyze Epidemics Spread across Contact Networks, \emph{Journal of Statistical Software}, \bold{83-11}.	}
+
 \author{ Chris Groendyke \email{cgroendyke@gmail.com},
     David Welch \email{david.welch@auckland.ac.nz} }
 

@@ -46,7 +46,7 @@ must occur at the end of the array, after all rows for infected individuals.  Th
 
 dyadiccovmat is an \eqn{{N \choose 2}}{(N choose 2)} row by \eqn{(k+2)} column matrix containing the dyadic covariates for the population, where \eqn{N} is the number of individuals in the population and \eqn{k} is the number of dyadic covariates used in the model.  The matrix contains one row for each dyad (pair of nodes).  Columns 1 and 2 give the ID of the two nodes comprising the dyad, and the remaining \eqn{k} columns give the covariate values. 
 
-Uses an algorithm similar to that described in Groendyke et al. (2010) and Britton and O'Neill (2002).
+Uses an algorithm similar to that described in Groendyke and Welch (2018), Groendyke et al. (2010), and Britton and O'Neill (2002).
 
 }
 
@@ -91,6 +91,8 @@ Uses an algorithm similar to that described in Groendyke et al. (2010) and Britt
     tree.} 
 
 \references{
+Groendyke, C. and Welch, D.  2018.  epinet: An R Package to Analyze Epidemics Spread across Contact Networks, \emph{Journal of Statistical Software}, \bold{83-11}.	
+	
 Groendyke, C., Welch, D. and Hunter, D.  2012. A Network-based Analysis of the 1861 
     Hagelloch Measles Data, \emph{Biometrics}, \bold{68-3}.
 

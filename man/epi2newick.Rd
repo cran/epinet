@@ -36,7 +36,7 @@ Converts the epinet epidemic format into a transmssion tree represented as a New
 
 \references{
 Rambaut A. 2014. FigTree v1.4. \url{http://tree.bio.ed.ac.uk/software/figtree/}.
-Vaughan T. 2015. IcyTree \url{http://tgvaughan.github.io/icytree/icytree.html}.
+Vaughan T. 2015. IcyTree \url{https://icytree.org}.
 }
 
 \author{ David Welch \email{david.welch@auckland.ac.nz},

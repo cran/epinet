@@ -29,6 +29,9 @@ parameters in the model, and number of iterations of the MCMC algorithm.
 \seealso{\code{\link{epinet}} for generating posterior samples of the parameters, and
     \code{\link{plot.epinet}} for plotting the posterior samples of the transmission tree.}
 
+\references{
+Groendyke, C. and Welch, D.  2018.  epinet: An R Package to Analyze Epidemics Spread across Contact Networks, \emph{Journal of Statistical Software}, \bold{83-11}.	}
+
 \author{ Chris Groendyke \email{cgroendyke@gmail.com},
     David Welch \email{david.welch@auckland.ac.nz} }
 

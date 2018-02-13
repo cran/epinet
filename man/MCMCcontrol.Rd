@@ -52,6 +52,9 @@ including the intercept.  These are tuning parameters for the MCMC algorithm.
 \seealso{ \code{\link{epinet}} for generating posterior samples of the parameters, and
     \code{\link{priorcontrol}} for specifying prior distributions and their hyperparameters.} 
 
+\references{
+Groendyke, C. and Welch, D.  2018.  epinet: An R Package to Analyze Epidemics Spread across Contact Networks, \emph{Journal of Statistical Software}, \bold{83-11}.	
+}
 
 \author{ Chris Groendyke \email{cgroendyke@gmail.com}}
 

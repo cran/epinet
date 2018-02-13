@@ -8,6 +8,7 @@
 \alias{buildepifromoutput}
 \alias{epi2newick.int}
 \alias{plotepitree}
+\alias{epigraphmcmcc}
 \description{
   Internal epinet functions.
 }

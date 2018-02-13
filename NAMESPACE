@@ -1,5 +1,5 @@
 
-useDynLib(epinet)
+useDynLib(epinet, .registration=TRUE)
 
 # Suggested by devel win-builder check:
 importFrom(utils, packageDescription)
