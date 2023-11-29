@@ -38,7 +38,7 @@
     the two individuals in the dyad. 
     }
 
-\usage{Hagelloch}
+\usage{data(Hagelloch)}
 
 \format{See above.}
 

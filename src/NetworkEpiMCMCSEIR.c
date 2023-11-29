@@ -1126,7 +1126,7 @@ void epigraphmcmcc (double *etime, double *itime, double *rtime, int *etapars, d
 				{
 					if (*burnin > 0) Rprintf("Burn-in complete. \n");	
 				}
-				else Rprintf("%d of %d MCMC iterations complete (%ld secs/%d iterations). \n", (iter / maxmove), (*nsamp) , (long) difftime(curr_t, last_t) , (int) ( (*nsamp) / 100 ) );
+				else Rprintf("%d of %d MCMC iterations complete (%ld secs/%d iterations). \n", (int) (iter / maxmove), (int) (*nsamp) , (long) difftime(curr_t, last_t) , (int) ( (*nsamp) / 100 ) );
 				last_t = curr_t;
 			}
 		

@@ -1,4 +1,4 @@
-692b7084b2950d8f72de91c17340683f *DESCRIPTION
+f22b35f4c431fa2cfba8b8adc4fa27b6 *DESCRIPTION
 e67678032c5b50457ed976c38397e203 *NAMESPACE
 95f0e5a92c0664d9d98eaa79349493d2 *R/BuildX.R
 5bb4ba6ee5d39256239fc26073a4ea20 *R/Epinet.R
@@ -12,14 +12,14 @@ e051071b9add9726dbf170192693951d *data/Hagelloch.rda
 6cd5688650e27b37e1f3fbfc855d8600 *inst/CITATION
 9bb98984b4e590c869ae610a179622b2 *man/BuildX.Rd
 5534f0b92990e0688190efc2d4104f73 *man/Epinet.Rd
-bda20d0e1b57b09fa1d548b31df0ec07 *man/Hagelloch.Rd
+3bea19a04395fc92b7b735928008254d *man/Hagelloch.Rd
 4e2b76ffed722af1f4dd02a202f8948e *man/MCMCcontrol.Rd
 20ab618b1a7580299bc6e9be557ea7f3 *man/Priorcontrol.Rd
 32d925a10ea90dd65ba7edfa35cdb053 *man/SEIR.simulator.Rd
 33f51b12b98c71e90f99c14083c4427d *man/SimulateDyadicLinearERGM.Rd
 704e8b9cd3b8be54928346965775cb3f *man/epi2newick.Rd
 3e3983301f21faaad08e3db229937926 *man/epinet-internal.Rd
-83e0c824acdad5703f6f490781047f7d *man/ess.Rd
+ec2a016e12293e76fd05d98ae68b915f *man/ess.Rd
 b654aad845e6691f726dde5aa7f1601e *man/plot.epidemic.Rd
 48b63bfeeeee02ed50a396305e7caff6 *man/plot.epinet.Rd
 1dd24f56618ad0cddf0697b28cfea95e *man/print.epidemic.Rd
@@ -27,7 +27,7 @@ b2882a10e55a0aca00d91ac10c5371c0 *man/print.epinet.Rd
 c6b8ad3f1693e7b31d604a79233c2e46 *man/summary.epidemic.Rd
 d86569e2c794c2270746831e2a4fc2ea *man/summary.epinet.Rd
 75733b7051a35b019e3188be7cbe0900 *man/write.epinet.Rd
-f4f6c4c5acaf5207d223c9c41d7c26af *src/NetworkEpiMCMCSEIR.c
+223c2c9ad5bb8258874d54e513c98bf2 *src/NetworkEpiMCMCSEIR.c
 966581fe98d7cf697721f550a377587f *src/NetworkEpiMCMCSEIR.h
 f0fccd2b9bf344dc0e7a38996194e3e0 *src/NetworkFunctions.c
 d756b96772ce4feb7e59c66d0a4ff3e4 *src/NetworkFunctions.h

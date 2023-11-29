@@ -38,5 +38,3 @@
 	# ESS is a rough measure at best
 	ess(1:1000,ignoreBurnin = FALSE)	
 }
-
-\keyword{effective sample size, lag autocorrelation}
